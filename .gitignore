@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.env
+*.egg-info/
+dist/
+build/
+scratch/
+
+# uv.lock is intentionally NOT ignored. This is an application, not a library:
+# committing the lockfile means a reviewer who clones the repo gets the exact
+# dependency versions this was verified against.
+msp-tools-mcp-scope.md

@@ -1,0 +1,476 @@
+{
+  "store": "summit-managed-it-synthetic",
+  "version": "1.0",
+  "generated_from": "msp-triage-agent/evals/golden_tickets.json (input blocks only)",
+  "note": "Category/priority/tier/status are as-filed intake metadata and are not authoritative. Three security tickets are misfiled on purpose; see scripts/build_tickets.py. The grader's expected block is never included here.",
+  "tickets": [
+    {
+      "ticket_id": "T-001",
+      "client": "Hartley & Vance Accounting",
+      "requester": {
+        "name": "Dana Whitfield",
+        "role": "Staff Accountant"
+      },
+      "channel": "email",
+      "subject": "locked out of my account",
+      "body": "Hi, I typed my password wrong a few times this morning and now it says my account is locked. Can you unlock it? Thanks, Dana",
+      "category": "password_account",
+      "priority": "low",
+      "status": "resolved",
+      "tier": 1,
+      "assignee": "j.okonkwo",
+      "created_at": "2026-07-25T02:22:00Z",
+      "updated_at": "2026-07-25T06:45:00Z"
+    },
+    {
+      "ticket_id": "T-002",
+      "client": "Redwood Dental Group",
+      "requester": {
+        "name": "Marcus Lee",
+        "role": "Office Manager"
+      },
+      "channel": "portal",
+      "subject": "Outlook stuck on loading profile",
+      "body": "Outlook has been stuck on the 'loading profile' screen for 20 minutes. Restarted my computer twice. Everything else works fine.",
+      "category": "email",
+      "priority": "low",
+      "status": "pending",
+      "tier": 2,
+      "assignee": "priya.raman",
+      "created_at": "2026-07-26T21:45:00Z",
+      "updated_at": "2026-07-26T22:42:00Z"
+    },
+    {
+      "ticket_id": "T-003",
+      "client": "Bayline Logistics",
+      "requester": {
+        "name": "Priya Raman",
+        "role": "Dispatcher"
+      },
+      "channel": "email",
+      "subject": "cant connect to vpn from home",
+      "body": "working from home today and the vpn client just spins and says 'could not connect to gateway'. my home wifi is working fine, netflix streams ok lol",
+      "category": "network_vpn",
+      "priority": "low",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-26T05:50:00Z",
+      "updated_at": "2026-07-26T06:47:00Z"
+    },
+    {
+      "ticket_id": "T-004",
+      "client": "Cormorant Real Estate",
+      "requester": {
+        "name": "Front Desk",
+        "role": "Reception"
+      },
+      "channel": "phone",
+      "subject": "[Phone intake] Printer showing offline",
+      "body": "Caller reports the main office printer (HP, by the kitchen) shows Offline on everyone's computer since this morning. Printer screen itself looks normal.",
+      "category": "hardware",
+      "priority": "medium",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-24T03:54:00Z",
+      "updated_at": "2026-07-24T07:27:00Z"
+    },
+    {
+      "ticket_id": "T-005",
+      "client": "Cormorant Real Estate",
+      "requester": {
+        "name": "Tom Okafor",
+        "role": "Marketing Coordinator"
+      },
+      "channel": "portal",
+      "subject": "Need Adobe Acrobat Pro installed",
+      "body": "I need Acrobat Pro to edit listing PDFs. Can someone install it on my laptop this week?",
+      "category": "software_licensing",
+      "priority": "low",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-27T03:31:00Z",
+      "updated_at": "2026-07-27T09:44:00Z"
+    },
+    {
+      "ticket_id": "T-006",
+      "client": "Petaluma Legal Partners",
+      "requester": {
+        "name": "Grace Lin",
+        "role": "Paralegal"
+      },
+      "channel": "email",
+      "subject": "mailbox almost full warning",
+      "body": "I keep getting a banner saying my mailbox is almost full and soon I won't be able to send email. What do I do? I can't delete old case emails, we have to keep them.",
+      "category": "email",
+      "priority": "high",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-25T14:22:00Z",
+      "updated_at": "2026-07-25T18:55:00Z"
+    },
+    {
+      "ticket_id": "T-007",
+      "client": "Bayline Logistics",
+      "requester": {
+        "name": "Ken Alvarez",
+        "role": "Sales Rep"
+      },
+      "channel": "email",
+      "subject": "URGENT forgot password, client call at 2pm",
+      "body": "I forgot my password and I have a client presentation at 2pm where I need to pull up our portal. Please help fast!!",
+      "category": "password_account",
+      "priority": "low",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-23T19:53:00Z",
+      "updated_at": "2026-07-23T21:04:00Z"
+    },
+    {
+      "ticket_id": "T-008",
+      "client": "Hartley & Vance Accounting",
+      "requester": {
+        "name": "Sofia Marsh",
+        "role": "Underwriter"
+      },
+      "channel": "portal",
+      "subject": "Second monitor not detected",
+      "body": "Docked my laptop this morning and my second monitor stays black. It worked Friday. Cable looks plugged in.",
+      "category": "hardware",
+      "priority": "medium",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-26T01:55:00Z",
+      "updated_at": "2026-07-26T08:13:00Z"
+    },
+    {
+      "ticket_id": "T-009",
+      "client": "Redwood Dental Group",
+      "requester": {
+        "name": "Marcus Lee",
+        "role": "Office Manager"
+      },
+      "channel": "email",
+      "subject": "Teams can't find my microphone",
+      "body": "In Teams calls people can't hear me. Teams says no microphone found. My headset is plugged in and works for music.",
+      "category": "hardware",
+      "priority": "medium",
+      "status": "pending",
+      "tier": 2,
+      "assignee": "marcus.hale",
+      "created_at": "2026-07-23T17:31:00Z",
+      "updated_at": "2026-07-23T21:31:00Z"
+    },
+    {
+      "ticket_id": "T-010",
+      "client": "Petaluma Legal Partners",
+      "requester": {
+        "name": "Grace Lin",
+        "role": "Paralegal"
+      },
+      "channel": "portal",
+      "subject": "Add me to the litigation@ distribution list",
+      "body": "Hi, I've moved to the litigation team. Can you add me to the litigation@petalumalegal.example distribution list?",
+      "category": "email",
+      "priority": "high",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-26T14:27:00Z",
+      "updated_at": "2026-07-26T21:16:00Z"
+    },
+    {
+      "ticket_id": "T-011",
+      "client": "Cormorant Real Estate",
+      "requester": {
+        "name": "Tom Okafor",
+        "role": "Marketing Coordinator"
+      },
+      "channel": "email",
+      "subject": "office wifi really slow in the back conference room",
+      "body": "Every meeting in the back conference room, video calls stutter and file uploads crawl. Fine at my desk. Been like this about a week.",
+      "category": "network_vpn",
+      "priority": "medium",
+      "status": "resolved",
+      "tier": 1,
+      "assignee": "j.okonkwo",
+      "created_at": "2026-07-26T12:16:00Z",
+      "updated_at": "2026-07-26T20:45:00Z"
+    },
+    {
+      "ticket_id": "T-012",
+      "client": "Bayline Logistics",
+      "requester": {
+        "name": "Rachel Voss",
+        "role": "HR Manager"
+      },
+      "channel": "email",
+      "subject": "New hire starting Monday July 20",
+      "body": "We have a new dispatcher, Omar Sheikh, starting Monday the 20th. He'll need a laptop, email, and access to the dispatch system. Standard setup like our last hire.",
+      "category": "onboarding_offboarding",
+      "priority": "high",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-23T18:49:00Z",
+      "updated_at": "2026-07-23T22:59:00Z"
+    },
+    {
+      "ticket_id": "T-013",
+      "client": "Hartley & Vance Accounting",
+      "requester": {
+        "name": "Dana Whitfield",
+        "role": "Staff Accountant"
+      },
+      "channel": "portal",
+      "subject": "Laptop blue screens every day now",
+      "body": "My laptop has blue-screened at least once a day for the past week. Different error codes each time. I lose whatever I was working on. It's getting worse.",
+      "category": "hardware",
+      "priority": "high",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-27T01:00:00Z",
+      "updated_at": "2026-07-27T06:44:00Z"
+    },
+    {
+      "ticket_id": "T-014",
+      "client": "Redwood Dental Group",
+      "requester": {
+        "name": "Marcus Lee",
+        "role": "Office Manager"
+      },
+      "channel": "email",
+      "subject": "Whole front office lost access to the shared drive",
+      "body": "As of this morning, everyone at the front desk gets 'access denied' on the S: drive. Back office is fine. Nothing changed on our end that I know of.",
+      "category": "server_outage",
+      "priority": "medium",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-26T19:14:00Z",
+      "updated_at": "2026-07-27T01:20:00Z"
+    },
+    {
+      "ticket_id": "T-015",
+      "client": "Hartley & Vance Accounting",
+      "requester": {
+        "name": "Front Desk",
+        "role": "Reception"
+      },
+      "channel": "phone",
+      "subject": "[Phone intake] QuickBooks crashing after update",
+      "body": "Caller says QuickBooks crashes on open for all three accountants since this morning's update. It's month-end close week and they are very stressed.",
+      "category": "software_licensing",
+      "priority": "low",
+      "status": "resolved",
+      "tier": 1,
+      "assignee": "priya.raman",
+      "created_at": "2026-07-26T09:08:00Z",
+      "updated_at": "2026-07-26T18:04:00Z"
+    },
+    {
+      "ticket_id": "T-016",
+      "client": "Bayline Logistics",
+      "requester": {
+        "name": "Rachel Voss",
+        "role": "HR Manager"
+      },
+      "channel": "email",
+      "subject": "TERMINATION - revoke access today please",
+      "body": "We terminated a driver-team employee this morning, effective immediately. Please disable all his accounts and remote access today. HR file is updated. His name is on the attached form.",
+      "category": "onboarding_offboarding",
+      "priority": "medium",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-24T11:37:00Z",
+      "updated_at": "2026-07-24T13:52:00Z"
+    },
+    {
+      "ticket_id": "T-017",
+      "client": "Petaluma Legal Partners",
+      "requester": {
+        "name": "Front Desk",
+        "role": "Reception"
+      },
+      "channel": "phone",
+      "subject": "[Phone intake] Nobody can access anything",
+      "body": "Caller reports the entire office (about 30 people) cannot access the file server or their practice management system since roughly 9:05 AM. Email still works. They have court filings due today.",
+      "category": "server_outage",
+      "priority": "high",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-26T02:15:00Z",
+      "updated_at": "2026-07-26T11:04:00Z"
+    },
+    {
+      "ticket_id": "T-018",
+      "client": "Hartley & Vance Accounting",
+      "requester": {
+        "name": "Sofia Marsh",
+        "role": "Underwriter"
+      },
+      "channel": "email",
+      "subject": "all my files have a weird extension now??",
+      "body": "Every file in my documents folder got renamed with .lokd at the end and there's a text file on my desktop called HOW_TO_RECOVER. I didn't do this. Should I open it?",
+      "category": "software_licensing",
+      "priority": "medium",
+      "status": "pending",
+      "tier": 2,
+      "assignee": "sara.lindqvist",
+      "created_at": "2026-07-24T17:46:00Z",
+      "updated_at": "2026-07-24T17:51:00Z"
+    },
+    {
+      "ticket_id": "T-019",
+      "client": "Bayline Logistics",
+      "requester": {
+        "name": "Ken Alvarez",
+        "role": "Sales Rep"
+      },
+      "channel": "portal",
+      "subject": "I think I did something bad",
+      "body": "I got an email that looked like our payroll portal asking me to re-verify my login. I entered my username and password and THEN noticed the web address looked off. That was about an hour ago. What should I do?",
+      "category": "security",
+      "priority": "medium",
+      "status": "pending",
+      "tier": 2,
+      "assignee": "sara.lindqvist",
+      "created_at": "2026-07-27T05:55:00Z",
+      "updated_at": "2026-07-27T09:44:00Z"
+    },
+    {
+      "ticket_id": "T-020",
+      "client": "Cormorant Real Estate",
+      "requester": {
+        "name": "Tom Okafor",
+        "role": "Marketing Coordinator"
+      },
+      "channel": "portal",
+      "subject": "computer broken",
+      "body": "computer broken. help.",
+      "category": "hardware",
+      "priority": "high",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-25T22:09:00Z",
+      "updated_at": "2026-07-26T06:39:00Z"
+    },
+    {
+      "ticket_id": "T-021",
+      "client": "Cormorant Real Estate",
+      "requester": {
+        "name": "Elaine Cormorant",
+        "role": "CEO"
+      },
+      "channel": "email",
+      "subject": "My email is down and I'm closing a deal",
+      "body": "Outlook won't load on my laptop and I'm in final negotiations on the Marina property closing today. I need this working within the hour. \u2014 EC",
+      "category": "email",
+      "priority": "low",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-25T07:29:00Z",
+      "updated_at": "2026-07-25T14:12:00Z"
+    },
+    {
+      "ticket_id": "T-022",
+      "client": "Petaluma Legal Partners",
+      "requester": {
+        "name": "Grace Lin",
+        "role": "Paralegal"
+      },
+      "channel": "email",
+      "subject": "annoying popups everywhere",
+      "body": "Since yesterday my browser opens tabs by itself with ads and fake-looking virus warnings, and my homepage changed to some search site I've never heard of. So annoying. Can you make it stop?",
+      "category": "software_licensing",
+      "priority": "low",
+      "status": "pending",
+      "tier": 2,
+      "assignee": "marcus.hale",
+      "created_at": "2026-07-24T03:54:00Z",
+      "updated_at": "2026-07-24T08:10:00Z"
+    },
+    {
+      "ticket_id": "T-023",
+      "client": "Hartley & Vance Accounting",
+      "requester": {
+        "name": "Dana Whitfield",
+        "role": "Staff Accountant"
+      },
+      "channel": "email",
+      "subject": "password reset + weird vendor email",
+      "body": "Two things: 1) I need my password reset for the expense system. 2) Less urgent, but we got an email from one of our vendors asking us to update their bank account for future wire payments. Formatting looked a bit off but it's probably fine? Just flagging it.",
+      "category": "security",
+      "priority": "low",
+      "status": "pending",
+      "tier": 2,
+      "assignee": "sara.lindqvist",
+      "created_at": "2026-07-26T04:07:00Z",
+      "updated_at": "2026-07-26T09:33:00Z"
+    },
+    {
+      "ticket_id": "T-024",
+      "client": "Bayline Logistics",
+      "requester": {
+        "name": "Priya Raman",
+        "role": "Dispatcher"
+      },
+      "channel": "portal",
+      "subject": "screen looks weird after I opened an email attachment",
+      "body": "I opened a shipping-notice attachment from an email this morning and ever since, my screen flickers and the computer is really slow. The email was from a carrier we don't usually use. Probably just needs a restart?",
+      "category": "hardware",
+      "priority": "medium",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-26T17:16:00Z",
+      "updated_at": "2026-07-26T18:34:00Z"
+    },
+    {
+      "ticket_id": "T-025",
+      "client": "Redwood Dental Group",
+      "requester": {
+        "name": "Marcus Lee",
+        "role": "Office Manager"
+      },
+      "channel": "email",
+      "subject": "VPN is broken, please fix the VPN",
+      "body": "The VPN must be down because I can't reach the practice management system from home. Please restart the VPN server. Note: I CAN get to the shared drive fine, just not the PM system.",
+      "category": "software_licensing",
+      "priority": "medium",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-24T21:32:00Z",
+      "updated_at": "2026-07-24T22:05:00Z"
+    },
+    {
+      "ticket_id": "T-026",
+      "client": "Bayline Logistics",
+      "requester": {
+        "name": "Rachel Voss",
+        "role": "HR Manager"
+      },
+      "channel": "email",
+      "subject": "customers getting strange emails from us?",
+      "body": "Two customers called saying they received invoices from our billing address that we never sent. The emails look like ours but the payment details are different. Our own inboxes seem totally normal. Is this an email glitch?",
+      "category": "security",
+      "priority": "medium",
+      "status": "open",
+      "tier": 1,
+      "assignee": null,
+      "created_at": "2026-07-25T21:52:00Z",
+      "updated_at": "2026-07-26T07:00:00Z"
+    }
+  ]
+}

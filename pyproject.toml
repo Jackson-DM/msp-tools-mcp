@@ -1,0 +1,29 @@
+[project]
+name = "msp-tools-mcp"
+version = "0.1.0"
+description = "MCP server exposing the Summit Managed IT support toolset, with security guardrails enforced in the tool layer."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Pinned to the stable v1 line. The v2 pre-release reworks the SDK for the
+    # 2026-07-28 spec but ships marked not-for-production; see README "SDK version".
+    "mcp>=1.28,<2",
+]
+
+[project.scripts]
+msp-tools-mcp = "msp_tools.server:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["msp_tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
