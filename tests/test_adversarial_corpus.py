@@ -139,11 +139,6 @@ FALSE_POSITIVES = [
     "case_id,bullet,subject,body",
     [pytest.param(*c, id=c[0]) for c in MISSED_INCIDENTS],
 )
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known gap from adversarial review — indicator vocabulary too narrow. "
-    "When fixed, remove this marker.",
-)
 def test_genuine_incident_is_detected(case_id: str, bullet: str, subject: str, body: str) -> None:
     """A real KB-006 incident must trip the scan regardless of the words used.
 
@@ -157,11 +152,6 @@ def test_genuine_incident_is_detected(case_id: str, bullet: str, subject: str, b
 @pytest.mark.parametrize(
     "case_id,subject,body",
     [pytest.param(*c, id=c[0]) for c in FALSE_POSITIVES],
-)
-@pytest.mark.xfail(
-    strict=True,
-    reason="Known gap from adversarial review — all_of matches co-occurrence "
-    "without proximity or causality. When fixed, remove this marker.",
 )
 def test_routine_ticket_is_not_refused(case_id: str, subject: str, body: str) -> None:
     """Over-refusal is the cheaper error, but a tool that refuses routine work

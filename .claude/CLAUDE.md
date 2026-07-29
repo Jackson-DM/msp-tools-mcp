@@ -16,13 +16,34 @@ a regression, no matter what it does to ergonomics.
 
 ## Hard rules (non-negotiable)
 
-- `draft_response` MUST refuse every security ticket. Refusal is decided by
-  two independent layers, and **the category label alone is never sufficient**:
-  1. the ticket's as-filed `category == "security"`, OR
-  2. the content scan in `msp_tools/security.py` trips a KB-006 indicator
-     against the subject/body.
-  Layer 2 fires even when the label says otherwise. Mislabeled tickets are the
-  realistic failure mode and the reason the scan exists.
+- `draft_response` MUST refuse every security ticket. The guardrail is two
+  stages, composed in `msp_tools/guardrail.py`, and **the order is the safety
+  property, not an implementation detail**:
+
+  **Stage 1 - deterministic, final.** `msp_tools/security.py`. Refuses when the
+  as-filed `category == "security"` OR a KB-006 indicator trips against the
+  subject/body. The content scan fires even when the label says otherwise;
+  mislabeled tickets are the realistic failure mode and the reason it exists.
+
+  **Stage 2 - model classifier, additive only.** `msp_tools/classifier.py`.
+  Consulted ONLY when stage 1 finds nothing. It can add a refusal; it can never
+  remove one.
+
+  Stage 2 must never be able to clear a stage-1 refusal. Ticket text is
+  attacker-controlled - a phishing report contains the phisher's words - so any
+  path by which that text could reverse the deterministic layer hands the
+  guardrail to the attacker. Moving the classifier ahead of the scan, or letting
+  its verdict override, is the single most dangerous change possible in this repo.
+
+- The classifier fails CLOSED. A configured classifier that errors returns
+  `is_incident=true`. A broken safety check may never be the reason a reply gets
+  drafted. When no classifier is configured the server runs regex-only and must
+  DISCLOSE that in its results - silent degradation is worse than either mode.
+
+- Do not trust a green guardrail suite. Fixing all 14 adversarial cases produced
+  zero transfer to six new ones - the patterns had memorized those sentences.
+  Any future "all cases pass" claim must be measured on cases the patterns were
+  NOT written against, or it means nothing.
 - A refusal is a **return value**, not an exception. It returns
   `SECURITY_ESCALATION_REQUIRED` with the tripped indicators and the escalation
   target. Exceptions mean the tool broke; a refusal is the tool working.

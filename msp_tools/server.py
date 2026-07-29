@@ -21,8 +21,9 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from msp_tools import classifier as classifier_module
+from msp_tools import guardrail
 from msp_tools import kb as kb_module
-from msp_tools import security
 from msp_tools.adapters import LocalJSONDataSource
 from msp_tools.models import (
     DraftResponseResult,
@@ -47,6 +48,10 @@ KB_DIR = os.environ.get("MSP_TOOLS_KB", str(REPO / "kb"))
 DATA_PATH = os.environ.get("MSP_TOOLS_DATA", str(REPO / "data" / "tickets.json"))
 
 SOURCE = LocalJSONDataSource(DATA_PATH)
+
+# Stage 2 of the guardrail. Opt-in via MSP_TOOLS_CLASSIFIER + ANTHROPIC_API_KEY;
+# otherwise the server runs on the deterministic floor alone and says so.
+CLASSIFIER = classifier_module.build_default(KB_DIR)
 
 MAX_LIMIT = 25
 VALID_STATUS = {"open", "pending", "resolved"}
@@ -343,31 +348,41 @@ def draft_response(ticket_id: str) -> DraftResponseResult:
         )
 
     # --- the guardrail. Nothing below this block runs for a security ticket. ---
-    is_sec, hits, reasons = security.is_security_ticket(t)
-    if is_sec:
+    a = guardrail.assess(t, CLASSIFIER)
+    if a.is_security:
         log.warning(
-            "draft_response REFUSED %s (filed as %s): %s",
+            "draft_response REFUSED %s (filed as %s, stage=%s): %s",
             t["ticket_id"],
             t.get("category"),
-            ", ".join(h.id for h in hits) or "category label",
+            a.stage,
+            ", ".join(h.id for h in a.hits) or a.stage,
         )
+        indicators = [
+            SecurityIndicator(
+                id=h.id, kb_ref=h.kb_ref, description=h.description, evidence=list(h.evidence)
+            )
+            for h in a.hits
+        ]
+        # Stage 2 findings carry no regex id, so surface them in the same shape
+        # rather than as an unexplained refusal.
+        if a.stage == "classifier" and a.verdict is not None:
+            indicators.append(
+                SecurityIndicator(
+                    id="classifier:" + (a.verdict.indicators[0] if a.verdict.indicators else "flagged"),
+                    kb_ref="KB-006",
+                    description=a.verdict.rationale or "Flagged by the security classifier.",
+                    evidence=list(a.verdict.evidence),
+                )
+            )
         return DraftResponseResult(
             ok=False,
             ticket_id=t["ticket_id"],
             draft=None,
             error_code=ErrorCode.SECURITY_ESCALATION_REQUIRED,
             refusal=Refusal(
-                reasons=reasons,
+                reasons=a.reasons,
                 filed_category=t.get("category"),
-                indicators=[
-                    SecurityIndicator(
-                        id=h.id,
-                        kb_ref=h.kb_ref,
-                        description=h.description,
-                        evidence=list(h.evidence),
-                    )
-                    for h in hits
-                ],
+                indicators=indicators,
                 escalate_to="security_team",
                 guidance=(
                     "KB-006: support does not troubleshoot suspected security "
@@ -427,6 +442,14 @@ def draft_response(ticket_id: str) -> DraftResponseResult:
             "Draft is assembled verbatim from the grounding excerpts. Rewrite for "
             "tone if you like, but every fact, URL, and timeframe in your final "
             "reply must trace to `grounding`."
+            + (
+                ""
+                if a.classifier_available
+                else " NOTE: the security classifier is not configured, so this "
+                "ticket was cleared by the deterministic scan alone. That scan has "
+                "high precision but limited recall on unfamiliar phrasing — treat "
+                "clearance as weaker evidence than a refusal."
+            )
         ),
     )
 

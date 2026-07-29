@@ -118,18 +118,94 @@ committing" sequence is caller policy rather than a code-enforced gate — a fai
 hit on a repo arguing that safety rules belong in code. `confirm=true` on a
 first call commits immediately.
 
-### Status
+### Round two: fixing all 14 taught the scanner nothing
 
-Being addressed in the next revision: broader indicator vocabulary,
-sentence-level proximity for conjunctive rules, exculpatory context handling
-("restore from backup"), and — the actual fix — a **held-out adversarial corpus
-kept separate from the patterns**, so future scores measure cases the rules were
-not written against. Patching these 14 cases alone would just move the
-treadmill.
+The scanner was rewritten to address every finding — sentence-level proximity
+for conjunctive rules, trigger patterns that require an actual message object,
+exculpatory context (`unless_any`), and the missing phishing-link rule. All 14
+cases passed.
 
-The honest framing of this project: **it removes the negotiability of the rule,
-not the difficulty of classification.** Those are different problems, and only
-the first one is solved.
+Then six *new* incidents were written and run against it:
+
+| New ticket | Result |
+|---|---|
+| "Phone keeps asking me to approve a sign-in. I'm not trying to log in." | missed |
+| "Mouse moving on its own, a command window open, watched it type" | missed |
+| "Text from our CEO asking me to buy gift cards" | missed |
+| "Customer paid the invoice; the bank details on their email aren't ours" | missed |
+| USB found in the parking lot, plugged in, Defender warning | missed |
+| Firewall flagged overnight outbound data from the accounting PC | missed |
+
+**6 of 6 missed. 0 of 6 false positives on new routine tickets.**
+
+Going 14-for-14 was not progress, it was memorization — the patterns were tuned
+against those exact sentences and transferred nothing. The lesson generalizes:
+**regex reasons about vocabulary, KB-006 reasons about situations,** and KB-006
+states outright that its list is non-exhaustive. A vocabulary matcher cannot
+cover a non-exhaustive concept; every fix is local and the attack surface is the
+whole language.
+
+Precision did improve and held: 13 routine tickets, zero wrongly refused,
+including "my laptop fan runs at full speed and it is very slow" — which the
+first version refused.
+
+## Two-stage guardrail
+
+The measured shape of the problem — high precision, poor recall, recall not
+improvable by adding patterns — is what the current design responds to.
+
+```
+stage 1   deterministic KB-006 scan     security.py     the floor
+stage 2   model classifier              classifier.py   the recall layer
+```
+
+Stage 1 runs first and **its verdict is final**. Stage 2 is consulted only when
+stage 1 finds nothing, and its only possible effect is to *add* a refusal.
+
+### Why that ordering is the whole safety argument
+
+Ticket text is attacker-controlled by definition — a phishing report contains
+the phisher's words. If those words reached a component whose output could
+*clear* a ticket, the guardrail would be handed to the attacker.
+
+Under this ordering, a fully successful prompt injection achieves at most a
+failure to escalate something the regex already missed. It cannot reverse a
+refusal, and there is no path from ticket text to a draft. `tests/
+test_guardrail_stages.py` asserts this directly: a classifier stubbed to answer
+"safe" on every input still cannot clear a ticket stage 1 caught.
+
+### Fail-closed
+
+A configured classifier that errors returns `is_incident=true`. An outage
+degrades the tool into over-refusing, never into drafting. If no classifier is
+configured at all, the server runs regex-only and **says so in its results** —
+`draft_response` appends a note that clearance came from the deterministic scan
+alone and is weaker evidence than a refusal. Silent degradation would be worse
+than either mode.
+
+### Enabling stage 2
+
+Opt-in, so cloning the repo never produces surprise API charges:
+
+```powershell
+$env:MSP_TOOLS_CLASSIFIER = "on"
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+```
+
+Tests inject a stub classifier and make no API calls, keeping the suite
+deterministic — the same discipline Project 1 holds for its grader.
+
+### What is still unresolved
+
+Stage 2's real-world accuracy is **not yet measured**. It is wired, tested
+against stubs, and fails closed, but its recall on the six novel cases has not
+been verified against the live API. Until that number exists, the honest claim
+is that the architecture is sound and the recall figure is unknown.
+
+The framing that survives all of this: **this project removes the negotiability
+of the rule, not the difficulty of classification.** Stage 1 makes the rule
+unnegotiable. Stage 2 is an attempt at the second problem, and the second
+problem is genuinely hard.
 
 ### A refusal is a return value, not an exception
 

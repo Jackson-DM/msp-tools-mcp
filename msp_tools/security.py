@@ -3,30 +3,55 @@
 This module exists so `draft_response` never has to trust a label. A ticket's
 as-filed category is intake metadata typed by whoever opened it; the realistic
 failure mode is a genuine incident filed as "hardware" because the user did not
-know what they were looking at. T-024 — "screen looks weird after I opened an
-email attachment", filed as hardware — is exactly that ticket.
+know what they were looking at.
 
-WHY THE RULES ARE CONJUNCTIVE
------------------------------
-KB-006's indicators are mostly compound conditions, not keywords. "Unexpected
-attachments opened, followed by ANY change in system behavior" is an AND: the
-word "attachment" alone appears in routine mail tickets all day and matching on
-it would refuse half the queue. So an indicator may specify:
+DESIGN, AND WHY IT CHANGED
+--------------------------
+The first version matched keyword groups anywhere in the ticket text. An
+independent adversarial review broke it in both directions: 7 realistic
+incidents went undetected, and 7 routine tickets were wrongly refused. See
+tests/test_adversarial_corpus.py. Four distinct faults, addressed here:
 
-    any_of  — a single signal strong enough on its own (a ransom note)
-    all_of  — groups of alternatives that must ALL be represented (attachment
-              opened AND subsequent behaviour change)
+1. NO PROXIMITY. "attachment ... slow" matched even when the two words belonged
+   to unrelated sentences. KB-006 says "attachments opened, FOLLOWED BY any
+   change in system behavior" — a temporal relation, not co-occurrence. Rules
+   now match within a sliding window of consecutive sentences (`window`).
+
+2. WRONG OBJECT. "I clicked on the Excel icon and it opened slowly" satisfied a
+   rule about email attachments. Trigger patterns now require the object to be
+   a message, attachment, or link — not any click at all.
+
+3. NO EXCULPATORY CONTEXT. "Please restore my files from Friday's backup" read
+   as ransomware. Indicators may declare `unless_any` — context that suppresses
+   a weak match. It cannot suppress a strong one (see below), because an
+   incident report often contains innocent-sounding phrases too.
+
+4. A MISSING RULE. KB-006's first bullet is a DISJUNCTION — "phishing link
+   clicked, OR credentials entered on a suspicious site" — and only the second
+   half was implemented. A user who clicked a phishing link but entered nothing
+   received a cheerful draft. That was the most serious defect found.
+
+STRONG VS WEAK EVIDENCE
+-----------------------
+`any_of` is strong: one match is sufficient on its own, and no exculpatory
+context can suppress it. A ransom note is a ransom note.
+
+`all_of` is weak: every group must be represented within the window, and
+`unless_any` can suppress it. This asymmetry matters — otherwise a genuine
+incident that happens to mention a backup would be silenced.
 
 FALSE POSITIVES ARE CHEAP, FALSE NEGATIVES ARE NOT
 --------------------------------------------------
-Carrying over Project 1's asymmetry: a wrongly refused ticket is awkward and a
-human resolves it in a minute. A wrongly drafted response to an active
-compromise can destroy forensic evidence or walk a user further into a fraud.
-When a rule is borderline, it is written to fire.
+A wrongly refused ticket is awkward and a human resolves it in a minute. A
+wrongly drafted reply to an active compromise can destroy forensic evidence or
+walk a user further into a fraud. Borderline rules are written to fire. But
+"refuse everything" is not a guardrail either — a tool that cries wolf trains
+people to route around it, which costs more than it saves.
 
-This scanner is deliberately dumb, deterministic, and readable. It makes no API
-calls and has no model in the loop — the guardrail must not itself depend on a
-model's judgment, or it inherits the negotiability it exists to remove.
+This scanner is deliberately deterministic, with no model in the loop: a
+guardrail that asked a model for a verdict would inherit the negotiability it
+exists to remove. Its known limitation is the flip side of that — it reasons
+about vocabulary, not meaning, and KB-006's list is explicitly non-exhaustive.
 """
 
 from __future__ import annotations
@@ -34,14 +59,19 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+# Default proximity: a group may match in this many consecutive sentences.
+# Two, because users routinely split cause and effect across a sentence break —
+# "I opened the attachment. Right after that, the fan came on."
+DEFAULT_WINDOW = 2
+
 
 @dataclass(frozen=True)
 class Indicator:
     """One KB-006 indicator pattern.
 
-    Fires when any_of matches, or when every group in all_of has at least one
-    matching alternative. Patterns are regexes matched against normalized
-    (lowercased, whitespace-collapsed) ticket text.
+    Fires when any_of matches (strong, unsuppressable), or when every group in
+    all_of matches within `window` consecutive sentences and no unless_any
+    pattern is present (weak, suppressable).
     """
 
     id: str
@@ -49,29 +79,116 @@ class Indicator:
     description: str
     any_of: tuple[str, ...] = ()
     all_of: tuple[tuple[str, ...], ...] = ()
+    unless_any: tuple[str, ...] = ()
+    window: int = DEFAULT_WINDOW
 
 
-# --- KB-006 "Treat as a security incident (non-exhaustive)" ------------------
-# Each indicator below maps to a bullet in kb/KB-006-security-incident-response.md.
-# The KB list is explicitly non-exhaustive, so these rules are a floor, not a
-# ceiling: matching nothing here is not evidence that a ticket is safe.
+# Reusable fragments -------------------------------------------------------
+
+# The object must be a message or its payload. Bare "clicked" is not enough:
+# people click icons, buttons, and links inside your own product all day.
+_MESSAGE_OBJECT = (
+    r"\battachment\b",
+    r"\battached\b",
+    r"(?:clicked|opened|double-?clicked|ran|downloaded)[^.]{0,60}?"
+    r"(?:e-?mail|message|attachment|link|invite)",
+    r"(?:link|file|invoice|notice|document)[^.]{0,30}?(?:from|in)[^.]{0,30}?"
+    r"(?:e-?mail|message)",
+)
+
+# Any change in system behaviour, per KB-006's "ANY change".
+_BEHAVIOUR_CHANGE = (
+    r"\bslow(?:er|ly)?\b",
+    r"\bflicker",
+    r"\bfreez(?:e|es|ing)\b",
+    r"\bcrash(?:es|ing|ed)?\b",
+    r"\bpop-?ups?\b",
+    r"\bweird\b",
+    r"\bstrange\b",
+    r"\bfan\b",
+    r"full speed",
+    r"on (?:its|their) own",
+    r"by itself",
+    r"run(?:s|ning)? differently",
+    r"ever since",
+    r"right after",
+    r"since then",
+    r"\bwon'?t (?:start|boot|open)\b",
+    r"acting (?:up|funny|strange)",
+    r"\bunresponsive\b",
+)
+
 
 INDICATORS: tuple[Indicator, ...] = (
     Indicator(
         id="ransomware_or_file_encryption",
         kb_ref="KB-006",
-        description="Files renamed or encrypted, or a ransom / recovery note present.",
+        description="Files renamed or encrypted, or a ransom / recovery demand present.",
         any_of=(
             r"how[\s_-]?to[\s_-]?recover",
-            r"\bransom(ware)?\b",
-            r"\bdecrypt(ed|ion)?\b",
-            r"\brestore my files\b",
-            r"files? (?:are|were|got|have been) (?:encrypted|renamed|locked)",
+            r"\bransom(?:ware)?\b",
+            r"\bdecrypt(?:ed|ion)?\b",
+            r"\bbitcoin\b",
+            r"\bcrypto(?:currency)?\b",
+            r"(?:pay|send)[^.]{0,30}?(?:to (?:get|recover|unlock)|for the key)",
+            r"get the key",
+            r"files? (?:are|were|got|have been) (?:encrypted|locked)",
         ),
         all_of=(
-            (r"\brenamed\b", r"\bextension\b", r"\.[a-z]{3,5}\b at the end"),
-            (r"every file", r"all (?:my|the) files", r"documents folder", r"whole folder"),
+            (
+                r"\brenamed\b",
+                r"\bextension\b",
+                r"(?:end|ends|ending) (?:in|with) \.?[a-z0-9]{2,6}\b",
+                r"\.[a-z0-9]{2,6}\b at the end",
+            ),
+            (
+                r"every file",
+                r"every (?:word )?document",
+                r"all (?:my|the) files",
+                r"documents folder",
+                r"shared drive",
+                r"none of them will open",
+                r"\binaccessible\b",
+                r"won'?t open",
+            ),
         ),
+        # A user restoring a folder they deleted is not an incident. Cannot
+        # suppress any_of — an actual ransom note outranks any of this.
+        unless_any=(
+            r"from (?:friday'?s?|last night'?s?|the|our|a) backup",
+            r"restore (?:it |them )?from backup",
+            r"\bi deleted\b",
+            r"by mistake",
+            r"\baccidentally\b",
+        ),
+    ),
+    Indicator(
+        id="phishing_link_or_message_engaged",
+        kb_ref="KB-006",
+        description=(
+            "A link or attachment from a suspected phishing / scam message was "
+            "opened. KB-006 treats this as sufficient on its own — credentials "
+            "need not have been entered, and nothing need appear wrong yet."
+        ),
+        all_of=(
+            _MESSAGE_OBJECT,
+            (
+                r"\bphish",
+                r"\bscam\b",
+                r"\bfraudulent\b",
+                r"\bsuspicious\b",
+                r"\bfake\b",
+                r"\bspoof",
+                r"not legitimate",
+                r"looked like (?:our|a)",
+                r"pretend(?:ing|ed) to be",
+                r"asked me to (?:sign in|log ?in|verify|re-?verify)",
+                r"\bimpersonat",
+            ),
+        ),
+        # Whole-ticket window: the user often names the scam in a later
+        # sentence ("a coworker says the message was a scam").
+        window=0,
     ),
     Indicator(
         id="credentials_entered_on_suspicious_site",
@@ -89,19 +206,21 @@ INDICATORS: tuple[Indicator, ...] = (
                 r"\busername\b",
                 r"\blogin\b",
             ),
+            # The suspicious thing must be the SITE, not the user's monitor.
+            # "the dashboard looked off on my monitor" is a UI complaint.
             (
-                r"looked? off",
-                r"address (?:looked|looks|was) ",
-                r"\bsuspicious\b",
+                r"(?:web )?address (?:looked|looks|was|seemed)",
+                r"(?:url|domain|site|web ?page|link) (?:looked|looks|was|seemed)",
                 r"\bphish",
-                r"\bfake\b",
+                r"\bscam\b",
                 r"\bspoof",
-                r"wasn'?t right",
-                r"didn'?t look right",
-                r"\bnot (?:our|the real)\b",
+                r"\bfake\b",
+                r"not (?:our|the real|the actual)",
                 r"looked like our",
+                r"wasn'?t (?:our|the real|right)",
             ),
         ),
+        window=0,
     ),
     Indicator(
         id="attachment_or_link_then_behavior_change",
@@ -110,75 +229,85 @@ INDICATORS: tuple[Indicator, ...] = (
             "An unexpected attachment or link was opened and system behaviour "
             "changed afterwards."
         ),
-        all_of=(
-            (
-                r"\battachment\b",
-                r"\battached\b",
-                r"opened (?:a|an|the) .{0,30}(?:file|email|link|notice)",
-                r"clicked (?:a|an|the|on)",
-                r"\bdownloaded\b",
-            ),
-            (
-                r"\bslow(er|ly)?\b",
-                r"\bflicker",
-                r"\bfreez(e|es|ing)\b",
-                r"\bcrash(es|ing|ed)?\b",
-                r"\bpop-?ups?\b",
-                r"\bweird\b",
-                r"\bstrange\b",
-                r"ever since",
-                r"since then",
-                r"\bwon'?t (?:start|boot|open)\b",
-                r"acting (?:up|funny|strange)",
-            ),
-        ),
+        all_of=(_MESSAGE_OBJECT, _BEHAVIOUR_CHANGE),
     ),
     Indicator(
         id="browser_hijack",
         kb_ref="KB-006",
-        description="Browser hijack symptoms: self-opening tabs, changed homepage, fake warnings.",
+        description="Browser hijack: self-opening tabs, changed homepage/start page, fake warnings.",
         any_of=(
             r"opens? tabs? by itself",
             r"tabs? (?:open|opening) (?:by them|on their own|by itself)",
-            r"homepage (?:changed|is different|got changed)",
-            r"changed my homepage",
+            r"(?:home ?page|start ?page) (?:changed|is different|got changed|is now)",
+            r"changed my (?:home ?page|start ?page)",
             r"fake[\s-]?looking virus",
             r"fake virus warning",
-            r"\bredirect(?:ed|ing|s)? (?:me|my browser|to)\b",
+            r"instead of (?:google|bing|our)",
             r"search (?:site|engine) i'?ve never",
+        ),
+        all_of=(
+            (
+                r"\bredirect(?:ed|ing|s)?\b",
+                r"sends me to",
+                r"takes me to",
+                r"\bgoing to\b",
+            ),
+            (
+                r"\bads?\b",
+                r"\badvertis",
+                r"shopping (?:pages?|sites?)",
+                r"search results?",
+                r"never heard of",
+                r"\bpop-?ups?\b",
+            ),
+        ),
+        # A benefits portal legitimately redirecting to Microsoft SSO is not a
+        # hijack when the user says it worked.
+        unless_any=(
+            r"completed normally",
+            r"worked (?:fine|normally|as expected)",
+            r"that'?s expected",
         ),
     ),
     Indicator(
         id="vendor_payment_change_bec",
         kb_ref="KB-006",
         description=(
-            "Request to change vendor bank or payment details — business email "
-            "compromise / wire-fraud pattern."
+            "An inbound request to change vendor bank or payment details — "
+            "business email compromise / wire-fraud pattern."
         ),
         all_of=(
+            # Must be an INBOUND request from outside. Editing your own invoice
+            # template is routine work, not fraud.
+            (
+                r"(?:emailed|e-?mail|message|contacted|called)[^.]{0,40}?ask",
+                r"ask(?:ing|ed)[^.]{0,40}?(?:update|change|send|pay|go to)",
+                r"(?:we|they) (?:got|received)[^.]{0,30}?(?:an? )?e-?mail",
+                r"request(?:ing|ed) (?:that |we |us )?(?:update|change|pay)",
+                r"they say",
+                r"instructions for",
+            ),
             (
                 r"\bvendor\b",
                 r"\bsupplier\b",
                 r"\binvoices?\b",
                 r"\bbilling\b",
-                r"\bpayable",
+                r"\bpayable\b",
+                r"accounts?-?receivable",
+                r"\bap\b",
             ),
             (
                 r"bank (?:account|details)",
                 r"payment (?:details|information|info)",
                 r"\bwire\b",
+                r"\bach\b",
                 r"routing (?:number|details)",
                 r"account (?:number|details)",
                 r"\bremittance\b",
-            ),
-            (
-                r"\bupdate\b",
-                r"\bchange[ds]?\b",
-                r"\bdifferent\b",
-                r"\bnew\b",
-                r"\bswitch(?:ed|ing)?\b",
+                r"\bbill go to\b",
             ),
         ),
+        window=0,
     ),
     Indicator(
         id="spoofed_or_impersonated_email",
@@ -186,13 +315,30 @@ INDICATORS: tuple[Indicator, ...] = (
         description="Mail appearing to come from the client's own domain that they did not send.",
         any_of=(
             r"\bspoof(?:ed|ing)?\b",
-            r"never sent",
-            r"(?:we|they) didn'?t send",
             r"appear(?:s|ed)? to come from",
-            r"look like (?:ours|our emails)",
-            r"emails? from us",
             r"pretending to be",
+            r"with me as (?:the )?sender",
+            r"not in my sent items",
         ),
+        all_of=(
+            # Someone ELSE received it. "The copier scans were never sent to my
+            # email" is a delivery fault, not impersonation.
+            (
+                r"(?:customers?|clients?|recipients?|people|someone|vendors?)"
+                r"[^.]{0,40}?(?:received|got|getting|called|reported)",
+                r"received[^.]{0,30}?from (?:us|our)",
+                r"emails? from us",
+            ),
+            (
+                r"never sent",
+                r"(?:we|they|i) didn'?t send",
+                r"not from us",
+                r"nothing to do with it",
+                r"we never",
+                r"look like ours",
+            ),
+        ),
+        window=0,
     ),
     Indicator(
         id="denied_account_change",
@@ -201,24 +347,32 @@ INDICATORS: tuple[Indicator, ...] = (
             "User denies causing their own lockout, password change, or MFA prompt."
         ),
         all_of=(
+            # Denial of CAUSATION. "I didn't receive the reset email" is a
+            # delivery complaint, and the user who retried and locked themselves
+            # out has admitted the cause.
             (
-                r"\bi didn'?t\b",
-                r"i did not",
-                r"\bi never\b",
-                r"nobody (?:here|else)",
+                r"\bi didn'?t (?:do|change|reset|request|authori[sz]e|make|touch)\b",
+                r"i did not (?:do|change|reset|request|authori[sz]e|make|touch)",
+                r"\bi never (?:changed|reset|requested|authori[sz]ed|did)\b",
                 r"wasn'?t me",
-                r"no[- ]one (?:here|else)",
+                r"no[- ]?(?:one|body) (?:here|else)",
+                r"i was asleep",
+                r"haven'?t touched",
+                r"didn'?t make that change",
+                r"i don'?t recogni[sz]e",
             ),
             (
                 r"\block(?:ed|out)\b",
-                r"password (?:reset|change)",
+                r"password (?:was )?(?:reset|change|changed|updated)",
                 r"reset my password",
                 r"\bmfa\b",
                 r"\btwo[- ]factor\b",
                 r"verification (?:code|prompt)",
-                r"\bsign[- ]?in (?:attempt|alert)\b",
+                r"sign[- ]?in (?:attempt|alert)",
+                r"account settings",
             ),
         ),
+        window=0,
     ),
 )
 
@@ -237,40 +391,73 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "")).lower()
 
 
+def _sentences(text: str) -> list[str]:
+    parts = [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", text) if s.strip()]
+    return parts or [text]
+
+
 def _first_match(pattern: str, text: str) -> str | None:
     m = re.search(pattern, text)
     return m.group(0).strip() if m else None
 
 
+def _match_groups(groups: tuple[tuple[str, ...], ...], text: str) -> list[str] | None:
+    """Every group must have at least one matching alternative in `text`."""
+    evidence: list[str] = []
+    for group in groups:
+        found = next((f for f in (_first_match(p, text) for p in group) if f), None)
+        if found is None:
+            return None
+        evidence.append(found)
+    return evidence
+
+
+def _match_windowed(ind: Indicator, sents: list[str], whole: str) -> list[str] | None:
+    """Match all_of groups within `window` consecutive sentences.
+
+    window=0 means the whole ticket, used where the corroborating detail
+    routinely lands far from the trigger ("a coworker says it was a scam").
+    """
+    if ind.window <= 0 or len(sents) <= ind.window:
+        return _match_groups(ind.all_of, whole)
+
+    for start in range(len(sents) - ind.window + 1):
+        chunk = " ".join(sents[start : start + ind.window])
+        found = _match_groups(ind.all_of, chunk)
+        if found is not None:
+            return found
+    return None
+
+
 def scan(subject: str, body: str) -> list[IndicatorHit]:
     """Scan ticket text for KB-006 indicators.
 
-    Returns every tripped indicator with the substrings that tripped it, so the
-    refusal can tell the caller precisely what was detected rather than
-    asserting "this looks like security" and expecting to be believed.
+    Returns every tripped indicator with the substrings that tripped it, so a
+    refusal can state precisely what was detected rather than asserting "this
+    looks like security" and expecting to be believed.
     """
-    text = _normalize(f"{subject} {body}")
+    whole = _normalize(f"{subject}. {body}")
+    sents = _sentences(whole)
     hits: list[IndicatorHit] = []
 
     for ind in INDICATORS:
         evidence: list[str] = []
+        strong = False
 
         for pattern in ind.any_of:
-            found = _first_match(pattern, text)
+            found = _first_match(pattern, whole)
             if found:
                 evidence.append(found)
+                strong = True
 
-        if not evidence and ind.all_of:
-            group_evidence: list[str] = []
-            for group in ind.all_of:
-                matched = next(
-                    (f for f in (_first_match(p, text) for p in group) if f), None
-                )
-                if matched is None:
-                    group_evidence = []
-                    break
-                group_evidence.append(matched)
-            evidence.extend(group_evidence)
+        if not strong and ind.all_of:
+            found = _match_windowed(ind, sents, whole)
+            if found is not None:
+                # Weak matches only. Exculpatory context can never suppress a
+                # ransom note, only a circumstantial pattern.
+                suppressed = any(re.search(p, whole) for p in ind.unless_any)
+                if not suppressed:
+                    evidence.extend(found)
 
         if evidence:
             hits.append(
