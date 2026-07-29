@@ -66,8 +66,70 @@ word "attachment" would refuse half the queue. Each indicator specifies either a
 single sufficient signal (`any_of`) or groups that must all be represented
 (`all_of`). See [`msp_tools/security.py`](msp_tools/security.py).
 
-Current behaviour on the 26-ticket store: **6/6 incidents caught, 0 false
-positives.**
+On the 26-ticket store it catches 6/6 with no false positives. **That number is
+not evidence of much, and the section below explains why.**
+
+## Adversarial review — what a second model found
+
+The indicators were written against the 26-ticket store and then scored on the
+same 26 tickets. That is testing on the training set, and it produced a clean
+number that meant very little.
+
+An independent review by a second model (Codex, prompted to break the guardrail
+rather than confirm it) was the first honest measurement. Every finding below
+was reproduced before being accepted.
+
+**7 of 7 realistic incidents written by the reviewer went undetected**, including
+one that is an explicit KB-006 bullet:
+
+| Case | Why it was missed |
+|---|---|
+| "I clicked a phishing link, didn't enter anything, nothing seems wrong" | KB-006 bullet 1 is a disjunction — *link clicked* OR *credentials entered*. Only the second was implemented. |
+| ".9ZP4 extension, note demanding Bitcoin for the key" | Vocabulary lacked "Bitcoin"; text never says "ransom", "encrypted", or "decrypt". |
+| "Fan at full speed, mouse moving on its own after opening a delivery attachment" | Those behaviour changes weren't in the enumerated list. |
+| "Chrome sends me to shopping pages, start page is now BestSearch" | Matched neither "redirect" nor "homepage". |
+| "Customers got an invoice with me as sender; not in my Sent Items" | Denial phrasing not in the impersonation vocabulary. |
+| "Vendor emailed new ACH instructions, old account closing" | "ACH", "AP", "bill" satisfied none of the three required groups. |
+| "Microsoft says my password changed at 2:14am; I was asleep" | "was updated" didn't match `password (reset|change)`. |
+
+**7 of 7 routine tickets would be wrongly refused**, because `all_of` proves
+only that phrases occur *somewhere* in the concatenated subject and body — it
+establishes no proximity, causality, or shared referent:
+
+| Routine ticket | Wrongly trips |
+|---|---|
+| "Please restore my files from Friday's backup, I deleted a folder" | ransomware |
+| "Clicked on the Excel icon and it opened slowly" | attachment-then-behaviour-change |
+| "The copier scans were never sent to my email" | spoofing |
+| "Benefits page redirected me to Microsoft, enrollment fine" | browser hijack |
+| "Update the invoice footer with our new bank account details" | vendor payment fraud |
+
+### What survived
+
+The architectural claim did. The reviewer probed it directly and concluded that
+once the scan trips, no parameter, phrasing, or instruction produces a draft —
+that part is a genuine property of the code, not a request.
+
+What failed is the classifier feeding it. A wall is only as good as what trips
+it, and this one has a vocabulary problem and a proximity problem.
+
+The reviewer also correctly caught that `update_ticket`'s "confirm before
+committing" sequence is caller policy rather than a code-enforced gate — a fair
+hit on a repo arguing that safety rules belong in code. `confirm=true` on a
+first call commits immediately.
+
+### Status
+
+Being addressed in the next revision: broader indicator vocabulary,
+sentence-level proximity for conjunctive rules, exculpatory context handling
+("restore from backup"), and — the actual fix — a **held-out adversarial corpus
+kept separate from the patterns**, so future scores measure cases the rules were
+not written against. Patching these 14 cases alone would just move the
+treadmill.
+
+The honest framing of this project: **it removes the negotiability of the rule,
+not the difficulty of classification.** Those are different problems, and only
+the first one is solved.
 
 ### A refusal is a return value, not an exception
 
@@ -262,10 +324,17 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
   not an integration.
 - Writes are in-memory for the process lifetime — `update_ticket` demonstrates a
   confirmation gate, it is not a persistence layer.
-- The indicator scan is deterministic regex. It catches 6/6 on this corpus with
-  no false positives, but KB-006 is explicitly non-exhaustive and a novel attack
-  described in unfamiliar language could evade it. It is a floor, not a ceiling.
-  The honest framing: this removes the *negotiability* of the rule, not the
-  difficulty of classification.
+- The indicator scan is deterministic regex with known gaps in both directions —
+  see the adversarial review above. It is a floor, not a ceiling.
+- `update_ticket`'s confirmation sequence is caller policy, not a code gate.
+  `confirm=true` on a first call commits immediately.
+- Several tool descriptions currently overstate the code: `search_tickets` with
+  no filters returns all statuses rather than open work, `get_ticket` is not the
+  only tool returning ticket bodies, `search_kb`'s `category` influences ranking
+  rather than filtering, and `KB_NO_MATCH` covers both "no match" and "corpus
+  unavailable". Being corrected.
+- `assignee=null` cannot unassign, and appended notes are not readable through
+  any tool.
 - Drafts are assembled from KB blocks rather than written. Prose polish is
-  delegated to the calling model, constrained by the returned grounding.
+  delegated to the calling model, constrained by the returned grounding. The
+  template's closing line is not itself KB-grounded.
