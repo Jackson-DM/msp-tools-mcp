@@ -592,8 +592,11 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
 - The round-four figures rest on n=40, one corpus, one author, one model. The
   precision half was written to seams suggested in the commissioning brief;
   recall was not.
-- `search_kb`'s `category` influences ranking rather than filtering, and the
-  name implies otherwise. Being corrected.
+- `search_kb`'s `topic_hint` cannot restrict results to a topic. It folds its
+  words into the query, so it promotes matches rather than filtering them. It
+  was called `category`, which implied otherwise; real filtering would mean
+  labelling all nine articles and then trusting those labels, which is the
+  failure this repo's guardrail exists to avoid.
 - Drafts are assembled from KB blocks rather than written. Prose polish is
   delegated to the calling model, constrained by the returned grounding. The
   template's closing line is not itself KB-grounded.

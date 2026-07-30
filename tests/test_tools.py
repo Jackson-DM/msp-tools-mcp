@@ -298,3 +298,17 @@ def test_missing_kb_is_distinct_from_no_match(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(server, "KB_DIR", str(REPO / "does-not-exist"))
     assert search_kb("account lockout").error_code is ErrorCode.KB_UNAVAILABLE
+
+
+def test_topic_hint_widens_rather_than_filters() -> None:
+    """It was named `category`, which implied filtering. It cannot filter — the
+    corpus has no category metadata — so results are never confined to it."""
+    plain = search_kb("account lockout")
+    hinted = search_kb("account lockout", topic_hint="hardware")
+    assert plain.ok and hinted.ok
+
+    # A hint from an unrelated topic must not remove the articles that matched
+    # the query itself.
+    plain_ids = {e.article_id for e in plain.excerpts}
+    hinted_ids = {e.article_id for e in hinted.excerpts}
+    assert plain_ids & hinted_ids, "an unrelated hint filtered out real matches"

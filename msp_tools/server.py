@@ -260,6 +260,12 @@ Query with the words the KB itself would use — symptoms and nouns
 sentences score worse than three or four content words, because matching is
 keyword overlap, not semantic similarity.
 
+`topic_hint` is optional and is NOT a filter. Its words are folded into your
+query, so it can promote articles that already match — it never restricts
+results to a topic, and a hit may match the hint alone. Passing a ticket's
+as-filed category here is reasonable; treating the results as "articles in that
+category" is not.
+
 WHAT IT DOES NOT DO
 - Does not search tickets. For customer requests use search_tickets.
 - Does not write replies. For a reply grounded in these articles, use
@@ -280,10 +286,10 @@ ERRORS
   that the knowledge base is unavailable; do not answer from general knowledge
   and do not present it to the user as "nothing found".""",
 )
-def search_kb(query: str, category: str | None = None, limit: int = 3) -> SearchKBResult:
+def search_kb(query: str, topic_hint: str | None = None, limit: int = 3) -> SearchKBResult:
     limit = max(1, min(limit, 10))
     try:
-        results = kb_module.search(query, KB_DIR, limit=limit, category=category)
+        results = kb_module.search(query, KB_DIR, limit=limit, topic_hint=topic_hint)
     except FileNotFoundError as e:
         log.error("KB load failed: %s", e)
         return SearchKBResult(
@@ -432,7 +438,7 @@ def draft_response(ticket_id: str) -> DraftResponseResult:
             f"{t['subject']} {t['body']}",
             KB_DIR,
             limit=3,
-            category=t.get("category"),
+            topic_hint=t.get("category"),
             include_internal=False,
         )
     except FileNotFoundError as e:

@@ -147,7 +147,7 @@ def search(
     query: str,
     kb_dir: str,
     limit: int = 3,
-    category: str | None = None,
+    topic_hint: str | None = None,
     include_internal: bool = True,
 ) -> list[Excerpt]:
     """Rank KB blocks against a free-text query.
@@ -156,20 +156,39 @@ def search(
     than one buried mid-paragraph — in this corpus the label is the procedure
     name, so a hit there is usually the article the caller wanted.
 
+    `topic_hint` was called `category`, which was a lie about what it does. It
+    does not filter: the KB corpus carries no category metadata to filter on.
+    Its tokens are folded into the query, so it can only ever promote blocks
+    that already match something — it widens the query, it never narrows the
+    corpus. A block matching only the hint and nothing in `query` still scores,
+    which is why the name mattered: a caller reading "category" would reasonably
+    expect results confined to it, and would misread a hint-only hit as a
+    category match.
+
+    Filtering was considered and rejected. It would mean labelling all nine
+    articles and trusting those labels — the same trust-the-label failure the
+    security scan exists to avoid, in a place where being wrong means a
+    technician cannot find a procedure that is sitting right there.
+
     `include_internal=False` drops staff-facing blocks. draft_response uses it
     so internal escalation rules cannot end up in a customer reply; search_kb
     leaves it on, because a technician looking up policy should see policy.
     """
+    # Load before inspecting the query. Otherwise a query with no usable terms
+    # returns [] against a missing corpus, which the caller reads as "no match"
+    # — reintroducing, in a corner, exactly the conflation KB_UNAVAILABLE exists
+    # to remove. A missing corpus should be reported as missing regardless of
+    # what was asked of it.
+    blocks = load_blocks(kb_dir)
+
     terms = set(_tokenize(query))
     if not terms:
         return []
 
-    blocks = load_blocks(kb_dir)
     if not include_internal:
         blocks = tuple(b for b in blocks if not b.internal)
-    if category:
-        cat_terms = set(_tokenize(category.replace("_", " ")))
-        terms |= cat_terms
+    if topic_hint:
+        terms |= set(_tokenize(topic_hint.replace("_", " ")))
 
     scored: list[Excerpt] = []
     for block in blocks:
