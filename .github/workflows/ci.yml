@@ -1,0 +1,224 @@
+# CI for msp-tools-mcp.
+#
+# WHAT THIS FILE IS FOR
+# ---------------------
+# Four of this project's five recorded failures had the same shape: a property
+# that held in practice, was documented as a guarantee, and was enforced by
+# nothing. The guardrail suite's pass condition, the corpus provenance rule, the
+# write gate, and the test suite's own determinism were all true by habit until
+# something made them true by construction.
+#
+# So the jobs below do not just "run the tests". Each one encodes a claim the
+# README makes, so that breaking the claim breaks the build:
+#
+#   guardrail            all six security tickets refuse; any draft fails it
+#   tests                the suite passes on every supported Python
+#   determinism          the suite is unaffected by classifier env vars
+#   no-api-dependency    stage 1 genuinely runs without the anthropic SDK
+#   corpora              no corpus can be committed without provenance
+#
+# NOT RUN HERE: the live stage-2 evaluation. It needs an API key, costs money,
+# and is non-deterministic — it is a measurement, not a regression gate. See
+# eval/README.md.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: nothing here writes to the repo.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Every action below is pinned to a full commit SHA rather than a moving tag,
+# per GitHub's supply-chain guidance, with the human-readable version in a
+# trailing comment. A moving tag is a mutable dependency on someone else's
+# repository: `@v7` can point somewhere new tomorrow without anything here
+# changing. The trailing comment is the only human-readable check on a SHA, so
+# it must be verified against the tag when either is changed, not assumed.
+#
+# setup-uv sits on v8.1.0 rather than the newer v9 line because that is the
+# version Astral's own GitHub Actions guide documents. Following the vendor's
+# current example beats chasing their latest tag.
+#
+# The pins are repeated per job because `uses:` cannot read workflow-level env.
+
+jobs:
+  guardrail:
+    # First and separately named, so a red build says which wall fell down.
+    # The pass condition is asymmetric and absolute, carried over from Project 1:
+    # all six security tickets must refuse, and ANY draft returned fails the
+    # whole suite regardless of how much else passes. A guardrail that works
+    # five times out of six is not a guardrail.
+    name: guardrail (all six must refuse)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Install the project
+        run: uv sync --locked --dev
+
+      - name: Security guardrail suite
+        run: uv run pytest tests/test_security_guardrail.py -v
+
+      - name: Write gate, adversarially
+        run: uv run pytest tests/test_confirmation_gate.py -v
+
+  tests:
+    name: tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the project
+        # --locked fails if uv.lock is stale rather than silently re-resolving,
+        # so CI tests the dependency set that was actually committed.
+        run: uv sync --locked --dev
+
+      - name: Run the suite
+        run: uv run pytest -q
+
+  determinism:
+    # Regression test for a real bug. `server.CLASSIFIER` is built at import
+    # time from the environment, so running the suite in a shell where the
+    # classifier had been enabled for an eval made live API calls, took 106
+    # seconds instead of one, and failed the test asserting regex-only
+    # disclosure. tests/conftest.py now pins a NullClassifier and strips the
+    # variables. This job sets them deliberately — hostile environment, same
+    # result — so that if conftest ever regresses, CI notices instead of a
+    # developer noticing months later.
+    name: determinism (hostile environment)
+    runs-on: ubuntu-latest
+    env:
+      MSP_TOOLS_CLASSIFIER: "on"
+      ANTHROPIC_API_KEY: "sk-ant-not-a-real-key-ci-must-never-use-this"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Install the project WITH the classifier extra
+        # The extra is installed on purpose: with the SDK present and the env
+        # vars set, anything that reads the environment instead of the fixture
+        # would try to reach the API and fail on the bogus key.
+        run: uv sync --locked --all-extras --dev
+
+      - name: The isolation fixtures must hold under a hostile environment
+        # Asserts the property directly: server.CLASSIFIER is a NullClassifier
+        # and neither environment variable is visible to tests. Run first and
+        # named separately so a failure here is unambiguous.
+        run: uv run pytest tests/test_harness_isolation.py -v
+
+      - name: Suite must be unaffected by the environment
+        run: uv run pytest -q
+
+  no-api-dependency:
+    # The README claims stage 1 "runs with no API dependency at all" and that
+    # `anthropic` is an optional extra. This job installs without it and proves
+    # both halves: the SDK is genuinely absent, and everything still works.
+    name: no-api-dependency (stage 1 stands alone)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Install WITHOUT the classifier extra
+        run: uv sync --locked --dev
+
+      - name: The anthropic SDK must be absent
+        run: |
+          if uv run python -c "import anthropic" 2>/dev/null; then
+            echo "::error::anthropic is importable without --extra classifier."
+            echo "::error::It has become a hard dependency; stage 1 no longer stands alone."
+            exit 1
+          fi
+          echo "confirmed: anthropic is not installed"
+
+      - name: Server imports and the deterministic scan still works
+        run: |
+          uv run python -c "
+          from msp_tools import security
+          from msp_tools.classifier import NullClassifier, build_default
+          hits = security.scan('files encrypted', 'every file renamed, note demands bitcoin')
+          assert hits, 'stage 1 scan found nothing on an obvious ransomware ticket'
+          assert isinstance(build_default('kb'), NullClassifier), 'expected regex-only mode'
+          print(f'stage 1 operational with no API dependency: {len(hits)} indicator(s)')
+          "
+
+      - name: Full suite passes without the extra
+        run: uv run pytest -q
+
+  corpora:
+    # A corpus is a claim about who wrote it. The loader rejects one without a
+    # provenance block; this job makes that rejection load-bearing, so a corpus
+    # cannot be committed unprovenanced and quietly used to produce a number.
+    name: corpora (provenance enforced)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Install the project
+        run: uv sync --locked --dev
+
+      - name: Every committed corpus must load and carry provenance
+        run: |
+          uv run python -c "
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          import importlib.util
+          spec = importlib.util.spec_from_file_location('ev', 'scripts/eval_classifier.py')
+          ev = importlib.util.module_from_spec(spec); spec.loader.exec_module(ev)
+
+          corpora = sorted(Path('eval/corpora').glob('*.json'))
+          assert corpora, 'no corpora found'
+          for p in corpora:
+              d = ev.load_corpus(p)
+              print(f\"{p.name}: {len(d['cases'])} cases, author={d['provenance']['author']!r}\")
+          print(f'{len(corpora)} corpus/corpora validated')
+          "
+
+      - name: Stage 1 evaluation runs offline
+        # --dry-run makes no API calls. This checks the harness still executes
+        # end to end against a real corpus, not that any particular score holds
+        # — pinning a score here would turn a measurement into a test, which is
+        # the mistake eval/README.md exists to prevent.
+        run: uv run python scripts/eval_classifier.py round4-codex --dry-run

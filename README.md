@@ -1,5 +1,7 @@
 # msp-tools-mcp
 
+[![CI](https://github.com/Jackson-DM/msp-tools-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Jackson-DM/msp-tools-mcp/actions/workflows/ci.yml)
+
 An MCP server exposing the Summit Managed IT support toolset — `search_tickets`,
 `get_ticket`, `search_kb`, `draft_response`, `update_ticket` — with a security
 guardrail enforced in the tool layer rather than in a prompt.
@@ -219,6 +221,32 @@ asserting the regex-only disclosure. `tests/conftest.py` now pins the server to
 a `NullClassifier` and strips the relevant environment variables for every test,
 so the suite is deterministic by construction. Tests wanting stage 2 inject a
 `StubClassifier` at the call site.
+
+`tests/test_harness_isolation.py` asserts that those fixtures are working, and
+CI runs the whole suite in a deliberately hostile environment — classifier
+enabled, a key present, the SDK installed — to prove the result does not depend
+on the shell it ran in.
+
+## CI
+
+`.github/workflows/ci.yml`. The jobs are not a generic "run the tests" pipeline;
+each encodes a claim this README makes, so that breaking the claim breaks the
+build:
+
+| Job | The claim it defends |
+|---|---|
+| `guardrail` | All six security tickets refuse. Any draft returned fails it. |
+| `tests` | The suite passes on 3.11, 3.12, and 3.13. |
+| `determinism` | Results are unaffected by classifier environment variables. |
+| `no-api-dependency` | Stage 1 genuinely runs without the `anthropic` SDK — the job installs without the extra, asserts the SDK is absent, and runs the scan anyway. |
+| `corpora` | No corpus can be committed without a `provenance` block. |
+
+The live stage-2 evaluation is deliberately **not** in CI. It needs an API key,
+costs money, and is non-deterministic — it is a measurement, not a regression
+gate, and pinning a score would convert it into exactly the kind of test
+`eval/README.md` exists to warn against.
+
+Third-party actions are pinned to full commit SHAs rather than moving tags.
 
 ### Round three: the corpus and the prompt shared an author
 
