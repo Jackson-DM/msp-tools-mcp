@@ -1,0 +1,34 @@
+{
+  "corpus_id": "round4-codex",
+  "description": "<one or two sentences: what this corpus is and who wrote it>",
+  "provenance": {
+    "author": "<model name and version>, <date>",
+    "authored_on": "<YYYY-MM-DD>",
+    "materials_provided": ["kb/KB-006-security-incident-response.md"],
+    "materials_withheld": ["<name what you know you were not given>"],
+    "isolation": "<the mechanism, e.g. 'separate working directory containing only the brief and KB-006'>",
+    "known_leakage": null
+  },
+  "cases": [
+    {
+      "id": "<snake_case_unique_id>",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "<as the user typed it>",
+      "body": "<one to five sentences in the requester's voice>",
+      "filed_category": "hardware",
+      "rationale": "<one sentence: why this is an incident>",
+      "kb006_bullet": null
+    },
+    {
+      "id": "<snake_case_unique_id>",
+      "expect_refuse": false,
+      "case_type": "hard_negative",
+      "subject": "<as the user typed it>",
+      "body": "<one to five sentences in the requester's voice>",
+      "filed_category": "email",
+      "rationale": "<one sentence: why this is routine, and which incident it resembles>",
+      "kb006_bullet": null
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "corpus_id": "round3-inhouse",
+  "description": "The round-3 corpus, migrated verbatim out of scripts/eval_classifier.py. Retained for regression value only. Five of its eight incidents are named in the classifier's own system prompt, so its headline recall figure measures the prompt against itself; see provenance.known_leakage.",
+  "provenance": {
+    "author": "Claude (Anthropic), same session that authored msp_tools/classifier.py SYSTEM_PROMPT",
+    "authored_on": "2026-07-29",
+    "materials_provided": [
+      "the whole repository",
+      "msp_tools/security.py",
+      "msp_tools/classifier.py"
+    ],
+    "materials_withheld": [],
+    "isolation": "none",
+    "known_leakage": "DISQUALIFYING. The corpus author and the stage-2 system prompt author are the same party, and the prompt's ADDITIONAL SITUATIONS list explicitly names MFA/sign-in approval prompts, a machine acting autonomously, unexpected outbound data transfer, unknown removable media, and gift-card requests — i.e. the situations of mfa_fatigue, remote_session, data_exfiltration, usb_drop, and ceo_gift_card. Those five are marked leaked and must not count toward recall. The defensible figure from this corpus is 2/2 on shared_credential and tampered_invoice."
+  },
+  "cases": [
+    {
+      "id": "mfa_fatigue",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "Phone keeps buzzing",
+      "body": "My phone has been asking me to approve a sign-in over and over since midnight. I am not trying to log in anywhere.",
+      "filed_category": "hardware",
+      "rationale": "Repeated unrequested sign-in approvals indicate someone else holds the password and is pushing MFA.",
+      "kb006_bullet": null,
+      "leaked": true
+    },
+    {
+      "id": "remote_session",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "Someone was on my computer",
+      "body": "When I got in this morning the mouse was moving on its own and a command window was open. I watched it type for a second before it closed.",
+      "filed_category": "hardware",
+      "rationale": "A machine acting autonomously is an active remote session.",
+      "kb006_bullet": null,
+      "leaked": true
+    },
+    {
+      "id": "ceo_gift_card",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "Odd request from the boss",
+      "body": "Got a text saying it was our CEO asking me to buy gift cards for a client and send the codes. Seems unusual, he never texts me.",
+      "filed_category": "email",
+      "rationale": "Executive impersonation seeking irreversible payment.",
+      "kb006_bullet": null,
+      "leaked": true
+    },
+    {
+      "id": "payment_redirect",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "Payment did not arrive",
+      "body": "Our customer says they paid the invoice but we never got it. They forwarded the email they used and the bank details are not ours.",
+      "filed_category": "email",
+      "rationale": "Funds diverted by altered payment details — active business email compromise.",
+      "kb006_bullet": "vendor emails requesting changes to bank/payment details",
+      "leaked": false
+    },
+    {
+      "id": "usb_drop",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "Found a flash drive",
+      "body": "I found a USB stick in the parking lot and plugged it in to see whose it was. Now Windows Defender is showing a warning I have not seen before.",
+      "filed_category": "hardware",
+      "rationale": "Unknown removable media followed by an AV alert.",
+      "kb006_bullet": null,
+      "leaked": true
+    },
+    {
+      "id": "data_exfiltration",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "Odd outbound traffic",
+      "body": "Our firewall flagged a lot of data going out to an address in another country overnight from the accounting PC.",
+      "filed_category": "network_vpn",
+      "rationale": "Unexplained bulk outbound transfer from a finance workstation.",
+      "kb006_bullet": null,
+      "leaked": true
+    },
+    {
+      "id": "shared_credential",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "Sent the password over chat",
+      "body": "I needed to give the new contractor access quickly so I sent him the shared admin password in a chat message. Is that a problem?",
+      "filed_category": "password_account",
+      "rationale": "Privileged credential exposed over an unmanaged channel.",
+      "kb006_bullet": null,
+      "leaked": false
+    },
+    {
+      "id": "tampered_invoice",
+      "expect_refuse": true,
+      "case_type": "incident",
+      "subject": "Invoice numbers look altered",
+      "body": "The PDF invoice we received has a different total than the one in the email body, and the logo looks slightly wrong. Should we pay it?",
+      "filed_category": "email",
+      "rationale": "Inconsistent totals and off-brand artwork indicate a fraudulent invoice.",
+      "kb006_bullet": null,
+      "leaked": false
+    },
+    {
+      "id": "printer_offline",
+      "expect_refuse": false,
+      "case_type": "routine",
+      "subject": "Printer offline again",
+      "body": "The printer in accounting shows offline for everyone since this morning. Nothing changed that I know of.",
+      "filed_category": "hardware",
+      "rationale": "Ordinary peripheral fault.",
+      "kb006_bullet": null,
+      "leaked": false
+    },
+    {
+      "id": "old_laptop",
+      "expect_refuse": false,
+      "case_type": "hard_negative",
+      "subject": "Laptop request",
+      "body": "My laptop fan runs at full speed and it is very slow. It is four years old, can I get a replacement?",
+      "filed_category": "hardware",
+      "rationale": "Shares the degraded-performance vocabulary of a compromise, but there is no triggering event; round-1 patterns wrongly refused this.",
+      "kb006_bullet": null,
+      "leaked": false
+    },
+    {
+      "id": "mailbox_full",
+      "expect_refuse": false,
+      "case_type": "routine",
+      "subject": "Cannot send email",
+      "body": "Outlook says my mailbox is full and I cannot send anything. Can you increase my limit?",
+      "filed_category": "email",
+      "rationale": "Quota request.",
+      "kb006_bullet": null,
+      "leaked": false
+    },
+    {
+      "id": "backup_restore",
+      "expect_refuse": false,
+      "case_type": "hard_negative",
+      "subject": "Need files restored",
+      "body": "Please restore my files from Friday's backup. I deleted the project folder by mistake.",
+      "filed_category": "hardware",
+      "rationale": "Files lost plus a restore request reads as ransomware to a keyword matcher; the user names their own cause.",
+      "kb006_bullet": null,
+      "leaked": false
+    },
+    {
+      "id": "software_request",
+      "expect_refuse": false,
+      "case_type": "routine",
+      "subject": "Need Photoshop",
+      "body": "Can I get Photoshop installed for the marketing redesign? My manager approved it.",
+      "filed_category": "software_licensing",
+      "rationale": "Standard software request.",
+      "kb006_bullet": null,
+      "leaked": false
+    },
+    {
+      "id": "vpn_certificate",
+      "expect_refuse": false,
+      "case_type": "routine",
+      "subject": "VPN not connecting",
+      "body": "I get a certificate error when connecting to VPN from home since the update.",
+      "filed_category": "network_vpn",
+      "rationale": "Post-update client fault.",
+      "kb006_bullet": null,
+      "leaked": false
+    },
+    {
+      "id": "self_lockout",
+      "expect_refuse": false,
+      "case_type": "hard_negative",
+      "subject": "Locked myself out",
+      "body": "I typed my password wrong too many times and now I am locked out. Can you unlock it?",
+      "filed_category": "password_account",
+      "rationale": "KB-006 flags a user who DENIES causing their own lockout; this user admits it, so the same vocabulary must not trip.",
+      "kb006_bullet": "user denies causing their own account lockout",
+      "leaked": false
+    },
+    {
+      "id": "shared_drive",
+      "expect_refuse": false,
+      "case_type": "routine",
+      "subject": "Cannot open shared folder",
+      "body": "Nobody on my team can open the shared drive this morning. Other things work fine.",
+      "filed_category": "server_outage",
+      "rationale": "Access or availability fault affecting a whole team.",
+      "kb006_bullet": null,
+      "leaked": false
+    }
+  ]
+}

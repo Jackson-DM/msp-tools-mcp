@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Jackson-DM/msp-tools-mcp/eval/corpus.schema.json",
+  "title": "Held-out guardrail evaluation corpus",
+  "description": "A set of support tickets with known correct verdicts, used to measure the two-stage guardrail. The only property that makes a corpus meaningful is that it was written by a party who never saw the code or prompts being measured; `provenance` records that claim so a reader can judge it.",
+  "type": "object",
+  "required": ["corpus_id", "provenance", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "corpus_id": {
+      "type": "string",
+      "description": "Short slug, unique across eval/corpora/.",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "object",
+      "description": "The audit trail for the held-out claim. A corpus without this is unquotable.",
+      "required": ["author", "authored_on", "materials_provided", "materials_withheld"],
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string",
+          "description": "Who or what wrote the cases. If this is the same party that wrote msp_tools/classifier.py's SYSTEM_PROMPT or msp_tools/security.py's patterns, the corpus is not held out and no recall figure from it may be quoted."
+        },
+        "authored_on": {
+          "type": "string",
+          "description": "ISO date."
+        },
+        "materials_provided": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Everything the author was given. For a clean corpus this should be kb/KB-006 and nothing else."
+        },
+        "materials_withheld": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "What the author was specifically denied, and therefore could not have written toward."
+        },
+        "isolation": {
+          "type": "string",
+          "description": "How the withholding was enforced. 'separate working directory' is a filesystem property; 'instructed not to read' is a promise. Say which."
+        },
+        "known_leakage": {
+          "type": ["string", "null"],
+          "description": "Any respect in which the held-out claim is compromised. Null only when there is genuinely none. This field is the reason the file is trustworthy; leaving it null to look good defeats the purpose."
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "expect_refuse", "case_type", "subject", "body", "rationale"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_]*$",
+            "description": "Unique within the corpus. Snake case."
+          },
+          "expect_refuse": {
+            "type": "boolean",
+            "description": "True if draft_response MUST refuse this ticket and return SECURITY_ESCALATION_REQUIRED."
+          },
+          "case_type": {
+            "enum": ["incident", "injection", "routine", "hard_negative"],
+            "description": "incident: a security incident in language the corpus author chose freely. injection: an incident whose text also tries to talk the classifier out of refusing (still expect_refuse=true). routine: an ordinary support request. hard_negative: an ordinary support request that deliberately shares vocabulary with incidents — the cases that measure precision honestly."
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "description": "As a user would type it. Lowercase, terse, and unhelpful is realistic."
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The ticket text. Written by the requester, who is usually a non-technical end user describing symptoms rather than causes."
+          },
+          "filed_category": {
+            "enum": [
+              "hardware",
+              "software_licensing",
+              "email",
+              "password_account",
+              "network_vpn",
+              "onboarding_offboarding",
+              "server_outage"
+            ],
+            "default": "hardware",
+            "description": "The as-filed intake label. 'security' is deliberately NOT permitted: a case filed as security trips the stage-1 label check before any content is read, so it measures nothing. Every case here is mislabeled or innocently labeled, which is the realistic failure mode."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "One sentence: why this is or is not an incident. For expect_refuse=false cases, ideally name the incident it could be mistaken for."
+          },
+          "kb006_bullet": {
+            "type": ["string", "null"],
+            "description": "If the case maps to a named KB-006 bullet, quote a few words of it. Null means the case relies on KB-006's list being explicitly non-exhaustive — those are the most valuable cases in the file."
+          },
+          "leaked": {
+            "type": "boolean",
+            "default": false,
+            "description": "True if this case's situation is named in the classifier's own system prompt. Leaked cases keep regression value but MUST NOT count toward a recall claim."
+          }
+        }
+      }
+    }
+  }
+}
