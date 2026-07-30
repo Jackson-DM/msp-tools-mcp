@@ -80,7 +80,11 @@ stack trace:
 | `TICKET_NOT_FOUND` | No ticket with that ID |
 | `KB_NO_MATCH` | Query matched no KB article above threshold |
 | `SECURITY_ESCALATION_REQUIRED` | Refusal; route to security team |
-| `CONFIRMATION_REQUIRED` | Write attempted without `confirm=True` |
+| `CONFIRMATION_REQUIRED` | Dry run; carries the preview and a confirmation_token |
+| `CONFIRMATION_INVALID` | Token fabricated, reused, expired, issued for a different change, or the ticket moved |
+| `CONFIRMATION_DECLINED` | The user was asked and declined; do not re-attempt |
+| `CONFIRMATION_UNAVAILABLE` | Token valid; the client's user-prompt channel failed |
+| `INVALID_FIELD` | Value outside the allowed set; nothing was changed |
 
 ## Tool descriptions are design work
 

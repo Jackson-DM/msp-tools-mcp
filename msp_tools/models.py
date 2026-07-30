@@ -24,6 +24,9 @@ class ErrorCode(str, Enum):
     KB_NO_MATCH = "KB_NO_MATCH"
     SECURITY_ESCALATION_REQUIRED = "SECURITY_ESCALATION_REQUIRED"
     CONFIRMATION_REQUIRED = "CONFIRMATION_REQUIRED"
+    CONFIRMATION_INVALID = "CONFIRMATION_INVALID"
+    CONFIRMATION_DECLINED = "CONFIRMATION_DECLINED"
+    CONFIRMATION_UNAVAILABLE = "CONFIRMATION_UNAVAILABLE"
     INVALID_FIELD = "INVALID_FIELD"
 
 
@@ -144,5 +147,23 @@ class UpdateTicketResult(BaseModel):
     applied: bool = Field(description="True only when the change was actually committed.")
     changes: list[FieldChange] = []
     ticket: Ticket | None = None
+    confirmation_token: str | None = Field(
+        default=None,
+        description=(
+            "Issued with a preview. Pass it back to commit exactly this change. "
+            "Single use, expires, and bound to these values on this ticket — it "
+            "will not authorise a different edit."
+        ),
+    )
+    confirmation_method: str | None = Field(
+        default=None,
+        description=(
+            "How the commit was authorised: 'user_elicitation' means this client "
+            "supports elicitation and a person was actually asked; 'token_only' "
+            "means it does not, so the server could verify a preview was produced "
+            "but not that anyone read it. Disclosed rather than assumed — a caller "
+            "must never mistake the weaker mode for the stronger one."
+        ),
+    )
     error_code: ErrorCode | None = None
     message: str | None = None

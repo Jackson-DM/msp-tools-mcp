@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -22,6 +23,16 @@ SECURITY_TICKETS = {"T-018", "T-019", "T-022", "T-023", "T-024", "T-026"}
 # Staff-facing articles. KB-006 is incident-response policy, KB-000 is the
 # triage priority matrix — neither is customer-facing prose.
 INTERNAL_ARTICLES = {"KB-000", "KB-006"}
+
+
+def run(coro):
+    """Drive an async tool from a sync test.
+
+    `update_ticket` is async because it may call ctx.elicit(). Rather than take a
+    dependency on pytest-asyncio for one tool, tests drive the coroutine
+    directly — explicit, and it keeps the dev requirements at pytest alone.
+    """
+    return asyncio.run(coro)
 
 
 def _tickets() -> list[dict]:
@@ -143,36 +154,44 @@ def test_draft_unknown_ticket() -> None:
 
 
 # --- update_ticket write gate -----------------------------------------------
+# The gate itself is tested adversarially in test_confirmation_gate.py. These
+# cover the ordinary paths.
 
 def test_update_dry_run_changes_nothing() -> None:
     before = get_ticket("T-002").ticket
-    r = update_ticket("T-002", status="resolved")
+    r = run(update_ticket("T-002", status="resolved"))
     assert r.ok is False
     assert r.applied is False
     assert r.error_code is ErrorCode.CONFIRMATION_REQUIRED
     assert r.changes[0].field == "status"
+    assert r.confirmation_token
     assert get_ticket("T-002").ticket.status == before.status
 
 
-def test_update_commits_only_with_confirm() -> None:
-    r = update_ticket("T-003", tier=2, confirm=True)
+def test_update_commits_with_the_issued_token() -> None:
+    preview = run(update_ticket("T-003", tier=2))
+    r = run(update_ticket("T-003", tier=2, confirmation_token=preview.confirmation_token))
     assert r.ok and r.applied is True
     assert get_ticket("T-003").ticket.tier == 2
+    # No elicitation-capable client in tests, so the weaker mode must be stated.
+    assert r.confirmation_method == "token_only"
+    assert "does not support elicitation" in (r.message or "")
 
 
 def test_update_rejects_invalid_values() -> None:
     for kwargs in ({"status": "banana"}, {"priority": "urgent"}, {"tier": 7}):
-        r = update_ticket("T-004", confirm=True, **kwargs)
+        r = run(update_ticket("T-004", **kwargs))
         assert r.ok is False and r.error_code is ErrorCode.INVALID_FIELD
         assert r.applied is False
 
 
 def test_update_noop_is_not_a_confirmation_prompt() -> None:
     current = get_ticket("T-005").ticket
-    r = update_ticket("T-005", status=current.status)
+    r = run(update_ticket("T-005", status=current.status))
     assert r.ok is True and r.applied is False and r.changes == []
+    assert r.confirmation_token is None
 
 
 def test_update_unknown_ticket() -> None:
-    r = update_ticket("T-999", status="open", confirm=True)
+    r = run(update_ticket("T-999", status="open"))
     assert r.ok is False and r.error_code is ErrorCode.TICKET_NOT_FOUND

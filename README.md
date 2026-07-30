@@ -116,9 +116,11 @@ What failed is the classifier feeding it. A wall is only as good as what trips
 it, and this one has a vocabulary problem and a proximity problem.
 
 The reviewer also correctly caught that `update_ticket`'s "confirm before
-committing" sequence is caller policy rather than a code-enforced gate — a fair
+committing" sequence was caller policy rather than a code-enforced gate — a fair
 hit on a repo arguing that safety rules belong in code. `confirm=true` on a
-first call commits immediately.
+first call committed immediately. That is now fixed: see
+[the write gate](#design-notes), which replaces the boolean with a server-issued
+token bound to the previewed change.
 
 ### Round two: fixing all 14 taught the scanner nothing
 
@@ -389,11 +391,38 @@ cannot ground a customer-facing draft. This was a real bug: the lockout draft
 originally opened with KB-006's incident checklist, because that block contains
 the words "account lockout" and outranked the actual lockout runbook.
 
-**Write operations declare their blast radius.** `update_ticket` is a dry run
-unless called with `confirm=true`, returning a field-by-field before/after
-preview and `CONFIRMATION_REQUIRED`. It also carries MCP `ToolAnnotations`
-(`readOnlyHint=false`, `idempotentHint=true`) so clients can reason about it
-without parsing the description.
+**The write gate is a token, not a boolean.** `update_ticket` used to commit
+when called with `confirm=true`, which the same adversarial review correctly
+called caller policy rather than a code gate — a boolean the caller sets is a
+request wearing a parameter's clothes, and any model that wanted to skip the
+preview simply passed it on the first call.
+
+It now takes two calls, always. The first is a dry run returning a
+field-by-field before/after preview, `CONFIRMATION_REQUIRED`, and a
+server-minted `confirmation_token`. The second passes that token back. There is
+no single-call form, and the token cannot be constructed by the caller, so the
+commit path is unreachable without first producing a preview.
+
+The token binds to the change, not just to the ticket. It is single-use,
+expires, and carries a digest of the exact field/before/after set plus a version
+stamp of the ticket's mutable state. Preview a note and try to spend that
+approval on a status change and it is refused — otherwise the preview would be
+theatre, since a user could approve one thing and have another committed against
+their agreement. If the ticket moved since the preview, the before/after the
+user saw no longer describes reality, and the token is refused as stale.
+
+**And the honest limit:** a token proves a preview was *issued* and that this
+commit matches it. It cannot prove a human *read* it. Where the client
+advertises elicitation the server closes that gap — it prompts the user directly
+via `ctx.elicit()` and aborts on decline, cancel, or a prompt that errors. Where
+the client does not, the result says so: `confirmation_method` comes back as
+`token_only` with a note stating that no one was asked. Same rule the classifier
+follows in regex-only mode — the weaker mode is disclosed, never silently
+substituted.
+
+`ToolAnnotations` carry `readOnlyHint=false` and `idempotentHint=false`. The
+second was previously `true` and was wrong: `note` appends, so an identical
+repeat call adds a second note.
 
 **Tool descriptions are design work.** Each states what it does, what it
 explicitly does *not* do, when to prefer a sibling tool, and what each error
@@ -406,7 +435,10 @@ code means. The reader is a capable model with no other context.
 | `TICKET_NOT_FOUND` | No ticket with that ID | Find the right ID via `search_tickets` |
 | `KB_NO_MATCH` | Nothing scored above threshold | Retry with different content words, then say the KB doesn't cover it |
 | `SECURITY_ESCALATION_REQUIRED` | Refusal | Escalate to the security team; do not compose a reply yourself |
-| `CONFIRMATION_REQUIRED` | Dry run, not a failure | Show the preview, then re-call with `confirm=true` |
+| `CONFIRMATION_REQUIRED` | Dry run, not a failure | Show the preview, then re-call with the `confirmation_token` it returned |
+| `CONFIRMATION_INVALID` | Token fabricated, reused, expired, issued for a different change, or the ticket moved | Nothing changed. Re-run the dry run; do not retry the same token |
+| `CONFIRMATION_DECLINED` | The user was asked and said no | Nothing changed. Do not re-attempt; ask what they want instead |
+| `CONFIRMATION_UNAVAILABLE` | Token was valid; the client's prompt channel failed | Nothing changed. A fresh token fails the same way — tell the user it couldn't be confirmed |
 | `INVALID_FIELD` | Value outside the allowed set | Fix the value; nothing was changed |
 
 ## Setup
@@ -509,6 +541,7 @@ Try:
 ```powershell
 uv run pytest -q                                  # full suite
 uv run pytest tests/test_security_guardrail.py -v # the critical one
+uv run pytest tests/test_confirmation_gate.py -v  # the write gate, adversarially
 ```
 
 The guardrail suite's pass condition is asymmetric and absolute, carried over
@@ -542,7 +575,12 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
 - Synthetic ticket store. The Freshdesk adapter is a stub of the right shape,
   not an integration.
 - Writes are in-memory for the process lifetime — `update_ticket` demonstrates a
-  confirmation gate, it is not a persistence layer.
+  confirmation gate, it is not a persistence layer. Pending confirmation tokens
+  are in-process for the same reason; a hosted multi-client deployment would need
+  shared storage for them.
+- The write gate cannot prove a human read the preview when the client does not
+  support elicitation. It proves a preview was issued and that the commit matches
+  it, and it says which of the two you got.
 - The indicator scan is deterministic regex with known gaps in both directions.
   Measured on a held-out corpus it catches 3 of 20 incidents, including only 3 of
   the 10 that KB-006 names explicitly. It is a floor, and a low one — its value
@@ -553,8 +591,6 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
 - The round-four figures rest on n=40, one corpus, one author, one model. The
   precision half was written to seams suggested in the commissioning brief;
   recall was not.
-- `update_ticket`'s confirmation sequence is caller policy, not a code gate.
-  `confirm=true` on a first call commits immediately.
 - Several tool descriptions currently overstate the code: `search_tickets` with
   no filters returns all statuses rather than open work, `get_ticket` is not the
   only tool returning ticket bodies, `search_kb`'s `category` influences ranking

@@ -21,6 +21,8 @@ where a reader can see it.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
 
 from msp_tools import server
@@ -47,3 +49,16 @@ def _no_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.delenv("MSP_TOOLS_CLASSIFIER", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_confirmation_store() -> Iterator[None]:
+    """Pending write tokens must not leak between tests.
+
+    The store is module-level in server.py so a token can outlive a single tool
+    call. That is right for the server and would be a cross-test dependency
+    here: a token minted by one test must never validate inside another.
+    """
+    server.CONFIRMATIONS._pending.clear()
+    yield
+    server.CONFIRMATIONS._pending.clear()

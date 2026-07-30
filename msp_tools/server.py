@@ -18,13 +18,15 @@ import os
 import sys
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
-from mcp.types import ToolAnnotations
+from mcp.server.fastmcp import Context, FastMCP
+from mcp.types import ClientCapabilities, ElicitationCapability, ToolAnnotations
+from pydantic import BaseModel, Field as PydanticField
 
 from msp_tools import classifier as classifier_module
 from msp_tools import guardrail
 from msp_tools import kb as kb_module
 from msp_tools.adapters import LocalJSONDataSource
+from msp_tools.confirmation import ConfirmationStore, ticket_version
 from msp_tools.models import (
     DraftResponseResult,
     ErrorCode,
@@ -56,6 +58,10 @@ CLASSIFIER = classifier_module.build_default(KB_DIR)
 MAX_LIMIT = 25
 VALID_STATUS = {"open", "pending", "resolved"}
 VALID_PRIORITY = {"low", "medium", "high", "critical"}
+
+# Pending write previews. Module-level because the gate must outlive a single
+# tool call but must not outlive the process — see confirmation.py.
+CONFIRMATIONS = ConfirmationStore()
 
 mcp = FastMCP(
     "msp-tools",
@@ -454,25 +460,66 @@ def draft_response(ticket_id: str) -> DraftResponseResult:
     )
 
 
+def _client_supports_elicitation(ctx: Context) -> bool:
+    """Whether this client advertised elicitation during initialization.
+
+    Checked rather than attempted, because a client that never declared the
+    capability may not answer at all, and a write must not hang waiting on a
+    prompt nobody will ever see. Any failure to determine it is treated as "no",
+    which selects the weaker mode — and the weaker mode is disclosed, so
+    answering conservatively here cannot silently downgrade anything.
+    """
+    try:
+        return ctx.session.check_client_capability(
+            ClientCapabilities(elicitation=ElicitationCapability())
+        )
+    except Exception:  # pragma: no cover - depends on transport state
+        return False
+
+
+class _ConfirmUpdate(BaseModel):
+    """Elicitation schema. Primitives only — the MCP spec allows nothing else."""
+
+    approve: bool = PydanticField(
+        description="Apply these changes to the ticket? Choose no to cancel; nothing has changed yet."
+    )
+
+
 @mcp.tool(
     annotations=ToolAnnotations(
-        readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False
+        # idempotentHint is False: `note` appends, so repeating an identical call
+        # appends a second note. The other fields are idempotent; the tool as a
+        # whole is not, and the annotation describes the tool.
+        readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False
     ),
     description="""Change ticket state: status, tier, priority, assignee, or an appended note.
 
-WRITE OPERATION — CONFIRMATION GATE
-Calling without `confirm=true` performs a dry run: nothing changes, and the
-result returns `applied: false` with a `changes` list showing exactly which
-fields would move from what to what, plus CONFIRMATION_REQUIRED.
+WRITE OPERATION — TWO CALLS, ALWAYS
+Call 1, without `confirmation_token`: a dry run. Nothing changes. The result
+carries `applied: false`, a `changes` list showing exactly which fields would
+move from what to what, a `confirmation_token`, and CONFIRMATION_REQUIRED.
 
-Show that preview to the user and get their agreement before calling again with
-`confirm=true`. Do not set `confirm=true` on the first call, and do not set it
-on the user's behalf because their intent seems obvious — the preview exists so
-a human sees the blast radius before state changes. Passing every field you were
-given at once is fine; the gate is about confirmation, not batching.
+Call 2, passing that `confirmation_token` back: commits.
+
+There is no single-call form. The token is minted by the server and cannot be
+constructed, guessed, or reused, so the commit path is not reachable without
+first producing a preview. This is enforced in code — it is not a convention you
+are being asked to follow, and there is no parameter that skips it.
+
+A token authorises exactly the change it previewed. If you alter any field, any
+value, or the ticket between the two calls, it is refused and you must preview
+again. Do not hold tokens or reuse them across tickets.
+
+Show the preview to the user between the two calls. Where the client supports
+elicitation the server will also ask the user directly and abort if they
+decline; `confirmation_method` in the result tells you which happened. When it
+reads `token_only`, no human was asked by the server — you are the only thing
+standing between the user and a silent write.
 
 Pass only the fields you intend to change. Omitted fields are left alone.
 Passing `note` appends to the ticket's note trail; it never replaces it.
+Batching several fields into one preview is fine and preferred — the gate is
+about confirmation, not about doing one field at a time.
 
 WHAT IT DOES NOT DO
 - Does not send anything to the requester. It changes internal ticket state
@@ -480,6 +527,8 @@ WHAT IT DOES NOT DO
 - Does not delete tickets, and cannot set a status outside the allowed values.
 - Does not validate that an escalation is appropriate. Recording tier 3 does
   not notify anyone; it records intent on the ticket.
+- Does not prove a human read the preview when `confirmation_method` is
+  `token_only`. It proves a preview was produced and that this commit matches it.
 
 FIELD VALUES
   status    open | pending | resolved
@@ -490,19 +539,28 @@ FIELD VALUES
 
 ERRORS
   TICKET_NOT_FOUND — no such ticket.
-  CONFIRMATION_REQUIRED — expected on a dry run. Not a failure: it carries the
-  preview. Show it to the user, then re-call with confirm=true.
+  CONFIRMATION_REQUIRED — expected on call 1. Not a failure: it carries the
+  preview and the token. Show the preview, then call again with the token.
+  CONFIRMATION_INVALID — the token was fabricated, already used, expired, issued
+  for a different change, or the ticket moved since the preview. Nothing was
+  changed. Re-run the dry run; do not retry the same token.
+  CONFIRMATION_DECLINED — the user was asked and said no. Nothing was changed.
+  Do not re-attempt this write. Ask what they want instead.
+  CONFIRMATION_UNAVAILABLE — your token was valid, but the client's user-prompt
+  channel failed, so nothing was changed. Not a token problem; a fresh token
+  will fail the same way. Tell the user the change could not be confirmed.
   INVALID_FIELD — a value outside the allowed set; nothing was changed. Fix the
   value and retry.""",
 )
-def update_ticket(
+async def update_ticket(
     ticket_id: str,
     status: str | None = None,
     tier: int | None = None,
     priority: str | None = None,
     assignee: str | None = None,
     note: str | None = None,
-    confirm: bool = False,
+    confirmation_token: str | None = None,
+    ctx: Context | None = None,
 ) -> UpdateTicketResult:
     t = _find(ticket_id)
     if t is None:
@@ -563,20 +621,98 @@ def update_ticket(
             message="No change requested — every supplied value already matches the ticket.",
         )
 
-    if not confirm:
-        summary = "; ".join(f"{c.field}: {c.before!r} -> {c.after!r}" for c in proposed)
+    summary = "; ".join(f"{c.field}: {c.before!r} -> {c.after!r}" for c in proposed)
+    triples = [(c.field, c.before, c.after) for c in proposed]
+    version = ticket_version(t)
+
+    # --- call 1: preview only. This is the only place a token is minted. -----
+    if not confirmation_token:
+        token = CONFIRMATIONS.issue(t["ticket_id"], triples, version)
         return UpdateTicketResult(
             ok=False,
             ticket_id=t["ticket_id"],
             applied=False,
             changes=proposed,
             ticket=_full(t),
+            confirmation_token=token,
             error_code=ErrorCode.CONFIRMATION_REQUIRED,
             message=(
-                f"Dry run — nothing has changed. Proposed: {summary}. "
-                "Show this to the user and re-call with confirm=true to commit."
+                f"Dry run — nothing has changed. Proposed: {summary}. Show this to "
+                "the user, then call again with this confirmation_token to commit. "
+                "The token authorises only this exact change."
             ),
         )
+
+    # --- call 2: redeem. Consumes the token whatever the outcome. -----------
+    check = CONFIRMATIONS.redeem(
+        confirmation_token, t["ticket_id"], triples, version, current_version=ticket_version(t)
+    )
+    if not check.ok:
+        log.warning(
+            "update_ticket rejected token for %s: %s", t["ticket_id"], check.rejection
+        )
+        return UpdateTicketResult(
+            ok=False,
+            ticket_id=t["ticket_id"],
+            applied=False,
+            changes=proposed,
+            ticket=_full(t),
+            error_code=ErrorCode.CONFIRMATION_INVALID,
+            message=check.message,
+        )
+
+    # --- ask the actual human, where the client can. ------------------------
+    # A valid token proves a preview existed and that this commit matches it. It
+    # cannot prove anyone read it. Elicitation closes that gap where the client
+    # supports it; where it does not, the weaker mode is disclosed rather than
+    # quietly substituted — same rule the classifier follows in regex-only mode.
+    method = "token_only"
+    if ctx is not None and _client_supports_elicitation(ctx):
+        try:
+            answer = await ctx.elicit(
+                message=(
+                    f"Apply these changes to {t['ticket_id']} ({t.get('subject', '')})?\n\n"
+                    + "\n".join(f"  {c.field}: {c.before!r} -> {c.after!r}" for c in proposed)
+                ),
+                schema=_ConfirmUpdate,
+            )
+        except Exception as e:
+            # Fail closed: an unusable confirmation channel must never be the
+            # reason a write lands unreviewed.
+            log.error("elicitation failed, refusing the write: %s", e)
+            return UpdateTicketResult(
+                ok=False,
+                ticket_id=t["ticket_id"],
+                applied=False,
+                changes=proposed,
+                ticket=_full(t),
+                # Deliberately NOT CONFIRMATION_INVALID. The token was fine; the
+                # channel for asking the user broke. A caller told its token was
+                # invalid would mint a new one and retry into the same failure.
+                error_code=ErrorCode.CONFIRMATION_UNAVAILABLE,
+                message=(
+                    "Your confirmation_token was valid, but the client's user-prompt "
+                    f"channel failed ({type(e).__name__}), so nothing was changed. "
+                    "This is not a problem with the token and retrying will not fix "
+                    "it. Tell the user the change could not be confirmed."
+                ),
+            )
+
+        if answer.action != "accept" or not answer.data.approve:
+            log.info("update_ticket declined by user for %s", t["ticket_id"])
+            return UpdateTicketResult(
+                ok=False,
+                ticket_id=t["ticket_id"],
+                applied=False,
+                changes=proposed,
+                ticket=_full(t),
+                error_code=ErrorCode.CONFIRMATION_DECLINED,
+                message=(
+                    f"The user declined this change to {t['ticket_id']}. Nothing was "
+                    "changed. Do not re-attempt it; ask what they would like instead."
+                ),
+            )
+        method = "user_elicitation"
 
     for c in proposed:
         if c.field == "note":
@@ -584,14 +720,25 @@ def update_ticket(
         else:
             t[c.field] = c.after
     SOURCE.save_ticket(t)
-    log.info("update_ticket applied %s: %s", t["ticket_id"], proposed)
+    log.info("update_ticket applied %s (%s): %s", t["ticket_id"], method, proposed)
 
     return UpdateTicketResult(
         ticket_id=t["ticket_id"],
         applied=True,
         changes=proposed,
         ticket=_full(t),
-        message=f"Applied {len(proposed)} change(s) to {t['ticket_id']}.",
+        confirmation_method=method,
+        message=(
+            f"Applied {len(proposed)} change(s) to {t['ticket_id']}."
+            + (
+                ""
+                if method == "user_elicitation"
+                else " NOTE: this client does not support elicitation, so the server "
+                "verified that a preview was issued for exactly this change but could "
+                "not ask anyone to approve it. Treat the write as reviewed only if you "
+                "actually showed the preview to the user."
+            )
+        ),
     )
 
 
