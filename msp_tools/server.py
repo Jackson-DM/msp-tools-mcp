@@ -113,6 +113,7 @@ def _full(t: dict) -> Ticket:
         channel=t.get("channel", "email"),
         requester_role=t["requester"].get("role", "unknown"),
         updated_at=t["updated_at"],
+        notes=list(t.get("notes") or []),
     )
 
 
@@ -136,12 +137,15 @@ def _excerpt(e: kb_module.Excerpt) -> KBExcerpt:
     description="""Find tickets in the Summit Managed IT queue using filters.
 
 Returns compact summaries (no ticket body) ranked newest-first, capped at
-`limit`. Combine filters freely; they AND together. Omit them all to see the
-newest open work.
+`limit`. Combine filters freely; they AND together.
+
+Omitting every filter returns the newest tickets of EVERY status, including
+resolved ones — not open work. Pass `status="open"` if that is what you want.
 
 WHAT IT DOES NOT DO
 - Does not return ticket bodies. Call get_ticket for the full text of a
-  specific ticket once you have narrowed to one.
+  specific ticket once you have narrowed to one. (draft_response also reads
+  bodies internally, but does not return them to you.)
 - Does not search inside ticket bodies for topics reliably — `query` matches
   subject and body substrings only, with no ranking or synonyms. For "what is
   our procedure for X", use search_kb instead; that searches the knowledge
@@ -211,7 +215,8 @@ def search_tickets(
     description="""Retrieve one ticket in full, including the requester's message body.
 
 Use this once you have a specific ticket ID — typically from search_tickets.
-This is the only tool that returns ticket body text.
+It is the only tool that returns ticket body text to you, and the only one that
+returns the internal `notes` trail that update_ticket appends.
 
 WHAT IT DOES NOT DO
 - Does not triage, categorise, or assess the ticket. It returns the record as
@@ -266,9 +271,14 @@ WHAT IT DOES NOT DO
   phone numbers at all.
 
 ERRORS
-  KB_NO_MATCH — nothing scored above threshold. Retry once with broader or
-  different content words. If it still misses, the knowledge base does not
-  cover the topic: say so plainly rather than answering from general knowledge.""",
+  KB_NO_MATCH — the corpus is fine, but nothing scored above threshold. Retry
+  once with broader or different content words. If it still misses, the
+  knowledge base does not cover the topic: say so plainly rather than answering
+  from general knowledge.
+  KB_UNAVAILABLE — the corpus could not be read at all. This is a server fault,
+  not a bad query. Rephrasing will not help and neither will retrying. Report
+  that the knowledge base is unavailable; do not answer from general knowledge
+  and do not present it to the user as "nothing found".""",
 )
 def search_kb(query: str, category: str | None = None, limit: int = 3) -> SearchKBResult:
     limit = max(1, min(limit, 10))
@@ -279,8 +289,12 @@ def search_kb(query: str, category: str | None = None, limit: int = 3) -> Search
         return SearchKBResult(
             ok=False,
             query=query,
-            error_code=ErrorCode.KB_NO_MATCH,
-            message="Knowledge base corpus is unavailable on the server.",
+            error_code=ErrorCode.KB_UNAVAILABLE,
+            message=(
+                "The knowledge base corpus could not be read on the server. This is "
+                "not a result about your query — do not retry it, and do not tell the "
+                "user the knowledge base has nothing on the topic."
+            ),
         )
 
     if not results:
@@ -339,7 +353,10 @@ ERRORS
   TICKET_NOT_FOUND — no such ticket; find the right ID with search_tickets.
   SECURITY_ESCALATION_REQUIRED — refused; escalate to the security team.
   KB_NO_MATCH — the knowledge base does not cover this issue. Escalate to a
-  technician rather than answering from general knowledge.""",
+  technician rather than answering from general knowledge.
+  KB_UNAVAILABLE — the corpus could not be read at all. A server fault, not a
+  gap in coverage. Do not compose a reply yourself; say the knowledge base is
+  unavailable.""",
 )
 def draft_response(ticket_id: str) -> DraftResponseResult:
     t = _find(ticket_id)
@@ -410,13 +427,33 @@ def draft_response(ticket_id: str) -> DraftResponseResult:
     # include_internal=False: staff-facing blocks ("NEVER issue a temporary
     # password", escalation rules) are legitimate KB content but must not be
     # pasted into a reply to a customer.
-    results = kb_module.search(
-        f"{t['subject']} {t['body']}",
-        KB_DIR,
-        limit=3,
-        category=t.get("category"),
-        include_internal=False,
-    )
+    try:
+        results = kb_module.search(
+            f"{t['subject']} {t['body']}",
+            KB_DIR,
+            limit=3,
+            category=t.get("category"),
+            include_internal=False,
+        )
+    except FileNotFoundError as e:
+        # Previously this escaped as a raw FileNotFoundError, which reaches the
+        # caller as a transport-level exception rather than something it can act
+        # on. A missing corpus is an operational fault, not a crash, and it is
+        # emphatically not "the KB has nothing on this" — reporting it as
+        # KB_NO_MATCH would invite a reply composed from general knowledge.
+        log.error("KB load failed while drafting %s: %s", t["ticket_id"], e)
+        return DraftResponseResult(
+            ok=False,
+            ticket_id=t["ticket_id"],
+            error_code=ErrorCode.KB_UNAVAILABLE,
+            message=(
+                "The knowledge base corpus could not be read, so no grounded reply "
+                "can be composed. This is a server fault, not a gap in the knowledge "
+                "base. Do not compose a reply from general knowledge; report that the "
+                "knowledge base is unavailable."
+            ),
+        )
+
     if not results:
         return DraftResponseResult(
             ok=False,
@@ -534,8 +571,13 @@ FIELD VALUES
   status    open | pending | resolved
   priority  low | medium | high | critical
   tier      1 | 2 | 3
-  assignee  technician username, or null to unassign
-  note      free text appended to the ticket's note trail
+  assignee  technician username to assign the ticket to
+  unassign  true to clear the assignee. Omitting `assignee` means "leave it
+            alone", so there is no value of `assignee` that means "nobody" —
+            this is the separate flag that does it. Passing both `assignee` and
+            `unassign=true` is contradictory and is rejected.
+  note      free text appended to the ticket's note trail. Read it back with
+            get_ticket, which returns the trail as `notes`.
 
 ERRORS
   TICKET_NOT_FOUND — no such ticket.
@@ -558,6 +600,7 @@ async def update_ticket(
     tier: int | None = None,
     priority: str | None = None,
     assignee: str | None = None,
+    unassign: bool = False,
     note: str | None = None,
     confirmation_token: str | None = None,
     ctx: Context | None = None,
@@ -596,6 +639,20 @@ async def update_ticket(
             error_code=ErrorCode.INVALID_FIELD,
             message=f"tier must be 1, 2, or 3; got {tier!r}.",
         )
+    if unassign and assignee is not None:
+        # Refused rather than resolved by precedence. Either order of priority
+        # would silently discard half of a contradictory instruction, and the
+        # caller would not learn which half.
+        return UpdateTicketResult(
+            ok=False,
+            ticket_id=t["ticket_id"],
+            applied=False,
+            error_code=ErrorCode.INVALID_FIELD,
+            message=(
+                f"Contradictory: unassign=true clears the assignee, but assignee="
+                f"{assignee!r} sets one. Nothing was changed. Pass one or the other."
+            ),
+        )
 
     proposed: list[FieldChange] = []
     if status is not None and status.lower() != t.get("status"):
@@ -608,6 +665,8 @@ async def update_ticket(
         )
     if assignee is not None and assignee != t.get("assignee"):
         proposed.append(FieldChange(field="assignee", before=t.get("assignee"), after=assignee))
+    if unassign and t.get("assignee") is not None:
+        proposed.append(FieldChange(field="assignee", before=t.get("assignee"), after=None))
     if note:
         proposed.append(FieldChange(field="note", before=None, after=note))
 

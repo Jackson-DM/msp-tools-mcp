@@ -195,3 +195,106 @@ def test_update_noop_is_not_a_confirmation_prompt() -> None:
 def test_update_unknown_ticket() -> None:
     r = run(update_ticket("T-999", status="open"))
     assert r.ok is False and r.error_code is ErrorCode.TICKET_NOT_FOUND
+
+
+# --- P1 defect fixes ---------------------------------------------------------
+
+def _commit(ticket_id: str, **kwargs):
+    """Drive the two-call gate. The gate itself is tested elsewhere."""
+    preview = run(update_ticket(ticket_id, **kwargs))
+    return run(
+        update_ticket(ticket_id, **kwargs, confirmation_token=preview.confirmation_token)
+    )
+
+
+def _an_assigned_ticket() -> str:
+    """A ticket that has an assignee *right now*.
+
+    Reads live server state rather than the JSON on disk: writes are in-memory
+    for the process lifetime, so an earlier test in the same run may already
+    have unassigned whatever the file says. Hardcoding an ID would couple these
+    tests to how the generator happened to seed the queue as well.
+    """
+    for t in _tickets():
+        if get_ticket(t["ticket_id"]).ticket.assignee:
+            return t["ticket_id"]
+    pytest.skip("no assigned ticket left in the store")
+
+
+def test_unassign_clears_the_assignee() -> None:
+    """assignee=None means "leave it alone", so clearing needs its own flag.
+    Previously there was no value that meant "nobody"."""
+    tid = _an_assigned_ticket()
+    assert get_ticket(tid).ticket.assignee is not None
+
+    r = _commit(tid, unassign=True)
+    assert r.ok and r.applied is True
+    assert get_ticket(tid).ticket.assignee is None
+    assert r.changes[0].field == "assignee" and r.changes[0].after is None
+
+
+def test_unassign_with_an_assignee_is_refused() -> None:
+    """Contradictory input is rejected rather than resolved by precedence —
+    either precedence silently discards half the instruction."""
+    tid = _an_assigned_ticket()
+    before = get_ticket(tid).ticket.assignee
+
+    r = run(update_ticket(tid, assignee="j.okonkwo", unassign=True))
+    assert r.ok is False
+    assert r.error_code is ErrorCode.INVALID_FIELD
+    assert r.applied is False
+    assert get_ticket(tid).ticket.assignee == before
+
+
+def test_unassigning_an_unassigned_ticket_is_a_noop() -> None:
+    tid = _an_assigned_ticket()
+    _commit(tid, unassign=True)
+    r = run(update_ticket(tid, unassign=True))
+    assert r.ok is True and r.applied is False and r.changes == []
+
+
+def test_notes_are_readable_after_being_appended() -> None:
+    """Notes used to be write-only: update_ticket appended them and no tool
+    returned them, so a technician could not read back what was recorded."""
+    tid = "T-020"
+    before = len(get_ticket(tid).ticket.notes)
+
+    _commit(tid, note="called the client, awaiting callback")
+    notes = get_ticket(tid).ticket.notes
+    assert len(notes) == before + 1
+    assert notes[-1] == "called the client, awaiting callback"
+
+    _commit(tid, note="client called back, resolved")
+    assert get_ticket(tid).ticket.notes[-2:] == [
+        "called the client, awaiting callback",
+        "client called back, resolved",
+    ]
+
+
+def test_missing_kb_is_typed_not_a_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A missing corpus used to escape draft_response as a raw FileNotFoundError,
+    which reaches the caller as a transport-level exception rather than something
+    it can act on."""
+    from msp_tools import server
+
+    monkeypatch.setattr(server, "KB_DIR", str(REPO / "does-not-exist"))
+
+    r = search_kb("account lockout")
+    assert r.ok is False
+    assert r.error_code is ErrorCode.KB_UNAVAILABLE
+
+    d = draft_response("T-001")
+    assert d.ok is False
+    assert d.error_code is ErrorCode.KB_UNAVAILABLE
+
+
+def test_missing_kb_is_distinct_from_no_match(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The two used to share KB_NO_MATCH. Collapsing them invites a caller to
+    tell the user "the knowledge base has nothing on that" when in fact the
+    corpus never loaded — and then to answer from general knowledge."""
+    assert search_kb("zzzznotarealword").error_code is ErrorCode.KB_NO_MATCH
+
+    from msp_tools import server
+
+    monkeypatch.setattr(server, "KB_DIR", str(REPO / "does-not-exist"))
+    assert search_kb("account lockout").error_code is ErrorCode.KB_UNAVAILABLE

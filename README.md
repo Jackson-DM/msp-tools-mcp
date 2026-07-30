@@ -433,7 +433,8 @@ code means. The reader is a capable model with no other context.
 | Code | Meaning | What the caller should do |
 |---|---|---|
 | `TICKET_NOT_FOUND` | No ticket with that ID | Find the right ID via `search_tickets` |
-| `KB_NO_MATCH` | Nothing scored above threshold | Retry with different content words, then say the KB doesn't cover it |
+| `KB_NO_MATCH` | Corpus loaded; nothing scored above threshold | Retry with different content words, then say the KB doesn't cover it |
+| `KB_UNAVAILABLE` | Corpus could not be read at all | A server fault, not a coverage gap. Don't retry, don't answer from general knowledge, don't report it as "nothing found" |
 | `SECURITY_ESCALATION_REQUIRED` | Refusal | Escalate to the security team; do not compose a reply yourself |
 | `CONFIRMATION_REQUIRED` | Dry run, not a failure | Show the preview, then re-call with the `confirmation_token` it returned |
 | `CONFIRMATION_INVALID` | Token fabricated, reused, expired, issued for a different change, or the ticket moved | Nothing changed. Re-run the dry run; do not retry the same token |
@@ -591,13 +592,8 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
 - The round-four figures rest on n=40, one corpus, one author, one model. The
   precision half was written to seams suggested in the commissioning brief;
   recall was not.
-- Several tool descriptions currently overstate the code: `search_tickets` with
-  no filters returns all statuses rather than open work, `get_ticket` is not the
-  only tool returning ticket bodies, `search_kb`'s `category` influences ranking
-  rather than filtering, and `KB_NO_MATCH` covers both "no match" and "corpus
-  unavailable". Being corrected.
-- `assignee=null` cannot unassign, and appended notes are not readable through
-  any tool.
+- `search_kb`'s `category` influences ranking rather than filtering, and the
+  name implies otherwise. Being corrected.
 - Drafts are assembled from KB blocks rather than written. Prose polish is
   delegated to the calling model, constrained by the returned grounding. The
   template's closing line is not itself KB-grounded.

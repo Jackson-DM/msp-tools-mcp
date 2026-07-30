@@ -22,6 +22,7 @@ class ErrorCode(str, Enum):
 
     TICKET_NOT_FOUND = "TICKET_NOT_FOUND"
     KB_NO_MATCH = "KB_NO_MATCH"
+    KB_UNAVAILABLE = "KB_UNAVAILABLE"
     SECURITY_ESCALATION_REQUIRED = "SECURITY_ESCALATION_REQUIRED"
     CONFIRMATION_REQUIRED = "CONFIRMATION_REQUIRED"
     CONFIRMATION_INVALID = "CONFIRMATION_INVALID"
@@ -55,6 +56,14 @@ class Ticket(TicketSummary):
     channel: str
     requester_role: str
     updated_at: str
+    notes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Internal note trail, oldest first, appended by update_ticket. "
+            "Staff-facing working notes — not written by the requester and not "
+            "shown to them. Empty for a ticket that has never been noted."
+        ),
+    )
 
 
 class SearchTicketsResult(BaseModel):
