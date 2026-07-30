@@ -209,8 +209,14 @@ Without the extra installed, `build_default` logs the reason and falls back to
 regex-only rather than crashing — but the fallback is only safe because it is
 disclosed in tool results. Check stderr if you expected stage 2 to be active.
 
-Tests inject a stub classifier and make no API calls, keeping the suite
-deterministic — the same discipline Project 1 holds for its grader.
+Tests make no API calls. That used to be true by convention and was therefore
+not true: `server.CLASSIFIER` is built at import time from the environment, so
+running the suite in a shell where the classifier had been enabled for an eval
+silently produced live API calls, a 106-second run, and one failure in a test
+asserting the regex-only disclosure. `tests/conftest.py` now pins the server to
+a `NullClassifier` and strips the relevant environment variables for every test,
+so the suite is deterministic by construction. Tests wanting stage 2 inject a
+`StubClassifier` at the call site.
 
 ### Round three: the corpus and the prompt shared an author
 
