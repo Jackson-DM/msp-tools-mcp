@@ -10,6 +10,20 @@ dependencies = [
     "mcp>=1.28,<2",
 ]
 
+[project.optional-dependencies]
+# Guardrail stage 2. Deliberately optional: stage 1 is the deterministic floor
+# and must run with no API dependency at all, so a clone of this repo works
+# offline and incurs no API charges by default.
+#   uv sync --extra classifier
+# >=0.120 for output_config / JSON-schema structured output, which the
+# classifier uses to constrain its verdict shape.
+# truststore makes Python verify against the OS certificate store instead of
+# certifi's bundle. Required on machines where antivirus or a corporate proxy
+# re-signs HTTPS: the interception root is trusted by Windows but absent from
+# certifi, so the SDK fails with a connection error. Same principle as uv's
+# --system-certs. This preserves verification rather than weakening it.
+classifier = ["anthropic>=0.120,<1", "truststore>=0.10"]
+
 [project.scripts]
 msp-tools-mcp = "msp_tools.server:main"
 

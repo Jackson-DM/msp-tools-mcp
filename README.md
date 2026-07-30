@@ -185,12 +185,18 @@ than either mode.
 
 ### Enabling stage 2
 
-Opt-in, so cloning the repo never produces surprise API charges:
+Opt-in, so cloning the repo never produces surprise API charges. The `anthropic`
+SDK is an optional extra — stage 1 runs with no API dependency at all:
 
 ```powershell
+uv sync --extra classifier --system-certs
 $env:MSP_TOOLS_CLASSIFIER = "on"
-$env:ANTHROPIC_API_KEY = "sk-ant-..."
+$env:ANTHROPIC_API_KEY = (Get-Content "$env:USERPROFILE\.anthropic-key" -Raw).Trim()
 ```
+
+Without the extra installed, `build_default` logs the reason and falls back to
+regex-only rather than crashing — but the fallback is only safe because it is
+disclosed in tool results. Check stderr if you expected stage 2 to be active.
 
 Tests inject a stub classifier and make no API calls, keeping the suite
 deterministic — the same discipline Project 1 holds for its grader.

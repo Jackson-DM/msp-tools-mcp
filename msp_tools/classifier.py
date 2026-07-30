@@ -189,7 +189,29 @@ class AnthropicClassifier:
     """Live classifier backed by the Anthropic API."""
 
     def __init__(self, kb_dir: str, model: str = DEFAULT_MODEL, client=None):
-        import anthropic  # imported lazily so regex-only mode needs no dependency
+        # Imported lazily: stage 1 is the floor and must run with no API
+        # dependency, so `anthropic` is an optional extra rather than required.
+        try:
+            import anthropic
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError(
+                "guardrail stage 2 needs the anthropic SDK, which is an optional "
+                "extra. Install it with:  uv sync --extra classifier"
+            ) from e
+
+        # Verify against the OS certificate store. On machines where antivirus
+        # or a corporate proxy re-signs HTTPS, the interception root is trusted
+        # by the OS but missing from certifi's bundle, so every request fails
+        # with a connection error that looks like a network fault. Opt out with
+        # MSP_TOOLS_SYSTEM_CERTS=0.
+        if os.environ.get("MSP_TOOLS_SYSTEM_CERTS", "1") != "0":
+            try:
+                import truststore
+
+                truststore.inject_into_ssl()
+                log.debug("using OS certificate store for TLS verification")
+            except Exception as e:  # pragma: no cover - environment dependent
+                log.warning("could not enable OS cert store (%s); using certifi", e)
 
         self._client = client or anthropic.Anthropic()
         self._model = model
