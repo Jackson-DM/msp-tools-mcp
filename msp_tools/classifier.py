@@ -2,14 +2,22 @@
 
 WHY THIS EXISTS
 ---------------
-The regex scan in security.py has high precision and poor recall. Measured: it
-catches every case it was tuned against and misses roughly all novel phrasing.
-Fixing 14 reviewer-supplied cases produced zero transfer to six new ones. The
-reason is structural — regex reasons about vocabulary, KB-006 reasons about
-situations, and KB-006 states outright that its list is non-exhaustive. You
-cannot enumerate a non-exhaustive concept.
+The regex scan in security.py catches every case it was tuned against and misses
+roughly all novel phrasing. Fixing 14 reviewer-supplied cases produced zero
+transfer to six new ones. The reason is structural — regex reasons about
+vocabulary, KB-006 reasons about situations, and KB-006 states outright that its
+list is non-exhaustive. You cannot enumerate a non-exhaustive concept.
 
-So this stage adds recall. It does not replace the floor.
+Measured on an independently authored held-out corpus (eval/corpora/round4-codex,
+40 cases), the failure is worse than "the tail is uncoverable": the scan caught
+3 of 20 incidents, and only 3 of the 10 that KB-006 names EXPLICITLY. Reworded,
+seven of the policy's own bullets clear it. What it reliably recognises is a few
+high-salience tokens, not the enumerated list.
+
+So this stage adds recall — on that corpus, 17 of the 17 incidents that reached
+it, including all four whose situations appear in neither KB-006 nor the prompt
+below. It does not replace the floor. The floor's value is that it cannot be
+argued with, not its coverage.
 
 THE PROPERTY THAT MAKES THIS SAFE
 ---------------------------------

@@ -44,6 +44,19 @@ a regression, no matter what it does to ergonomics.
   zero transfer to six new ones - the patterns had memorized those sentences.
   Any future "all cases pass" claim must be measured on cases the patterns were
   NOT written against, or it means nothing.
+- Measurement lives in `eval/`, never in the harness. A corpus is a claim about
+  who wrote it, so every corpus carries a `provenance` block and the loader
+  rejects one without it. Commission new corpora via
+  `eval/handoff/make-handoff.ps1`, which builds an isolated directory OUTSIDE the
+  repo - the author must not be able to read the patterns, the classifier prompt,
+  or this file. See `eval/README.md`.
+- When a held-out case fails, fix the thing that is actually wrong and record
+  where the fix went. Round 4's `verified_vendor_bank_move` was a KB-006 defect,
+  so KB-006 changed and the classifier prompt did not. Editing the prompt against
+  a case from the corpus measuring it is available every time and is exactly how
+  rounds 1-3 produced meaningless numbers. A case that drives any change is spent:
+  log it in `eval/README.md`, move it to the regression suite, commission a
+  replacement.
 - A refusal is a **return value**, not an exception. It returns
   `SECURITY_ESCALATION_REQUIRED` with the tripped indicators and the escalation
   target. Exceptions mean the tool broke; a refusal is the tool working.
