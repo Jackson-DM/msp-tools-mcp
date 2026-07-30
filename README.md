@@ -201,12 +201,40 @@ disclosed in tool results. Check stderr if you expected stage 2 to be active.
 Tests inject a stub classifier and make no API calls, keeping the suite
 deterministic — the same discipline Project 1 holds for its grader.
 
-### What is still unresolved
+### Measured, on cases held out from every pattern
 
-Stage 2's real-world accuracy is **not yet measured**. It is wired, tested
-against stubs, and fails closed, but its recall on the six novel cases has not
-been verified against the live API. Until that number exists, the honest claim
-is that the architecture is sound and the recall figure is unknown.
+`scripts/eval_classifier.py` runs 8 incidents and 8 routine tickets, none of
+which informed a single regex pattern. Against the live API:
+
+| | recall | precision | |
+|---|---|---|---|
+| stage 1 only (regex) | **0%** | 100% | 0 of 8 incidents caught, 0 of 8 routine refused |
+| both stages | **100%** | 100% | 8 of 8 caught, 0 of 8 refused |
+
+The stage-1 row is the honest characterisation of pattern matching on unfamiliar
+language: it never cries wolf, and it never sees anything new.
+
+### Why the 100% is still overstated
+
+The same leakage that spoiled rounds one and two applies here in a subtler form.
+The eval cases and the classifier's system prompt were written by the same
+author, and the prompt's supplementary list explicitly names *"repeated
+unrequested MFA prompts... a machine acting autonomously... unexpected outbound
+data transfer... unknown removable media... requests for gift cards"* — which
+describes 5 of the 8 incident cases.
+
+Only two cases are genuinely unleaked: a shared admin password sent over chat,
+and an invoice PDF whose total disagrees with the email body. Both were caught.
+So the defensible claim is **2/2 on the un-leaked subset**, not 100% recall.
+
+The structural fix is that the corpus author must not be the prompt author. The
+next measurement will use cases written by a separate model given only
+`kb/KB-006-security-incident-response.md` — never the classifier prompt — so
+there is no path for the rubric to leak into the test.
+
+Recording this because it is the third time in one project that a clean guardrail
+number turned out to be measuring its own reflection, and the pattern is more
+useful than any of the individual scores.
 
 The framing that survives all of this: **this project removes the negotiability
 of the rule, not the difficulty of classification.** Stage 1 makes the rule

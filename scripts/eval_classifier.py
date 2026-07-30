@@ -11,11 +11,23 @@ was built from. Both times the number looked good and meant nothing:
   round 2  patterns rewritten to fix all 14 of those, scored on those 14:
            "14/14". Six newly written incidents were then missed 6/6.
 
-The cases below are HELD OUT: none of them informed any regex pattern or any
-line of the classifier prompt. That is the only property that makes the output
-meaningful, and it is a property that decays — every time a case here drives a
-code change, it stops being held out and belongs in the regression suite
-(tests/test_adversarial_corpus.py) with a fresh case written to replace it.
+The cases below are held out from every regex pattern. That is the only property
+that makes the output meaningful, and it decays — every time a case here drives a
+code change it stops being held out and belongs in the regression suite
+(tests/test_adversarial_corpus.py), with a fresh case written to replace it.
+
+  round 3  KNOWN LEAKAGE, do not quote the headline number without it. These
+           cases and the stage-2 system prompt share an author, and the prompt's
+           supplementary list names MFA prompts, autonomous machines, outbound
+           data transfer, removable media, and gift-card requests — i.e. 5 of
+           the 8 incidents below. Both stages score 100% here; the defensible
+           figure is 2/2 on the two unleaked cases (shared_credential,
+           tampered_invoice).
+
+           The fix is structural: the corpus author must not be the prompt
+           author. Cases below marked LEAKED are retained for regression value
+           but must not count toward a recall claim. Replace them with cases
+           written by a party given only kb/KB-006, never the classifier prompt.
 
 Reports stage 1 alone and both stages together, because the interesting question
 is not "is the guardrail good" but "what does stage 2 add".
@@ -43,42 +55,50 @@ KB_DIR = str(Path(__file__).resolve().parent.parent / "kb")
 CASES: list[tuple[bool, str, str, str]] = [
     # --- incidents the regex layer is known to miss ------------------------
     (
-        True, "mfa_fatigue", "Phone keeps buzzing",
+        True, "mfa_fatigue",  # LEAKED: named in classifier prompt
+        "Phone keeps buzzing",
         "My phone has been asking me to approve a sign-in over and over since "
         "midnight. I am not trying to log in anywhere.",
     ),
     (
-        True, "remote_session", "Someone was on my computer",
+        True, "remote_session",  # LEAKED: named in classifier prompt
+        "Someone was on my computer",
         "When I got in this morning the mouse was moving on its own and a command "
         "window was open. I watched it type for a second before it closed.",
     ),
     (
-        True, "ceo_gift_card", "Odd request from the boss",
+        True, "ceo_gift_card",  # LEAKED: named in classifier prompt
+        "Odd request from the boss",
         "Got a text saying it was our CEO asking me to buy gift cards for a client "
         "and send the codes. Seems unusual, he never texts me.",
     ),
     (
-        True, "payment_redirect", "Payment did not arrive",
+        True, "payment_redirect",  # partially covered by KB-006 itself
+        "Payment did not arrive",
         "Our customer says they paid the invoice but we never got it. They forwarded "
         "the email they used and the bank details are not ours.",
     ),
     (
-        True, "usb_drop", "Found a flash drive",
+        True, "usb_drop",  # LEAKED: named in classifier prompt
+        "Found a flash drive",
         "I found a USB stick in the parking lot and plugged it in to see whose it "
         "was. Now Windows Defender is showing a warning I have not seen before.",
     ),
     (
-        True, "data_exfiltration", "Odd outbound traffic",
+        True, "data_exfiltration",  # LEAKED: named in classifier prompt
+        "Odd outbound traffic",
         "Our firewall flagged a lot of data going out to an address in another "
         "country overnight from the accounting PC.",
     ),
     (
-        True, "shared_credential", "Sent the password over chat",
+        True, "shared_credential",  # UNLEAKED - counts toward recall
+        "Sent the password over chat",
         "I needed to give the new contractor access quickly so I sent him the shared "
         "admin password in a chat message. Is that a problem?",
     ),
     (
-        True, "tampered_invoice", "Invoice numbers look altered",
+        True, "tampered_invoice",  # UNLEAKED - counts toward recall
+        "Invoice numbers look altered",
         "The PDF invoice we received has a different total than the one in the email "
         "body, and the logo looks slightly wrong. Should we pay it?",
     ),
