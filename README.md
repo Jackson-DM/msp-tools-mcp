@@ -617,9 +617,20 @@ becomes spent, and the running ledger of both.
 
 ## SDK version
 
-Pinned to the stable `mcp` v1 line (`>=1.28,<2`), verified against 1.28.1. The
-v2 line is a pre-release reworked for the 2026-07-28 spec and ships marked
-not-for-production; it is deliberately deferred rather than adopted mid-build.
+Pinned to the `mcp` v1 line (`>=1.28,<2`), verified against 1.28.1.
+
+**`mcp` 2.0.0 left pre-release on 2026-07-28** and is now published
+Production/Stable; 1.29.0 shipped the same day, so v1 is maintained rather than
+abandoned. The pin is doing real work: v2 removes `mcp.server.fastmcp`, which is
+the decorator API this server is written against, and replaces it with
+`mcp.server.mcpserver` alongside the unchanged `mcp.server.lowlevel`. Upgrading
+is a rewrite of `server.py`'s surface, not a version bump.
+
+Deferred deliberately. The tool layer is what this project is about, and the
+guardrail's behaviour is defined by `msp_tools/guardrail.py` and its tests rather
+than by the SDK, so a migration is mechanical work that would churn the file
+under review without changing anything the project claims. It is tracked, not
+forgotten.
 
 ## Limitations
 
@@ -642,6 +653,7 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
 - KB-006's verified-payment exception is a carve-out in a safety policy, added in
   response to one case and not yet tested against anyone trying to abuse it.
   `round5-payment-probe` is commissioned for exactly that and is not yet back.
+- Pinned to `mcp` v1 while v2 is stable and released. See SDK version above.
 - `search_kb`'s `topic_hint` cannot restrict results to a topic. It folds its
   words into the query, so it promotes matches rather than filtering them. It
   was called `category`, which implied otherwise; real filtering would mean
