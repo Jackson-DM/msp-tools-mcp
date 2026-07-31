@@ -1,0 +1,13 @@
+# Line endings are normalized to LF in the index AND in the working tree.
+#
+# Nine files once arrived in a working tree converted wholesale to CRLF: a
+# 2873-line diff with zero content change. That noise hides real edits during
+# review, which matters more here than usual, because this repo is reviewed line
+# by line by a second model. eol=lf rather than native because every consumer of
+# these files - Python, git, pytest, GitHub Actions on ubuntu-latest - reads LF,
+# and a CRLF .ps1 is harmless while a CRLF-vs-LF diff is not.
+*               text=auto eol=lf
+
+# Binary, never touched.
+*.png           binary
+*.ico           binary
