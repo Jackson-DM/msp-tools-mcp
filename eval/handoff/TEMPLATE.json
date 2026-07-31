@@ -1,5 +1,5 @@
 {
-  "corpus_id": "round4-codex",
+  "corpus_id": "<the corpus_id named in AGENTS.md; matches the output filename>",
   "description": "<one or two sentences: what this corpus is and who wrote it>",
   "provenance": {
     "author": "<model name and version>, <date>",

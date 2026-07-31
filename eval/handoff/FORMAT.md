@@ -1,15 +1,17 @@
 # Output format
 
-Write `output/round4-codex.json`. Copy `TEMPLATE.json` and fill it in.
+Write the file or files named in `AGENTS.md`, into `output/`. Copy
+`TEMPLATE.json` for each and fill it in. A round may ask for more than one
+corpus; each is a complete, independent file with its own `provenance`.
 
-The file is validated on ingest and rejected outright on a schema violation, so
-match this exactly.
+Every file is validated on ingest and rejected outright on a schema violation,
+so match this exactly.
 
 ## Top level
 
 ```jsonc
 {
-  "corpus_id": "round4-codex",   // keep as-is
+  "corpus_id": "<from AGENTS.md>", // must match the output filename
   "description": "...",          // one or two sentences on what this corpus is
   "provenance": { ... },         // see below — the most important block in the file
   "cases": [ ... ]               // 40 objects

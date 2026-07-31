@@ -7,8 +7,17 @@ them from an author who cannot see what they measure.
 eval/
   corpus.schema.json     the on-disk format, with the reasoning for each field
   corpora/*.json         corpora, each carrying its own provenance block
-  handoff/               the brief given to an independent corpus author
+  handoff/               the machinery for commissioning one
+  handoff/briefs/        one brief per round, kept rather than overwritten
 ```
+
+Briefs are kept per round because a corpus is a claim about who wrote it, and
+the brief is the other half of that claim: `round4-codex.json`'s numbers cannot
+be read without `briefs/round4.md`, which is where its `known_leakage` came
+from. `make-handoff.ps1` delivers the highest-numbered brief unless `-Round` says
+otherwise, and renames it to `AGENTS.md` on the way out — the author has no use
+for the round number, and a file called "round 5" invites them to wonder what
+the first four found.
 
 Run one:
 
@@ -63,13 +72,46 @@ KB-006 is a leak.
 Then:
 
 ```powershell
-Copy-Item ..\_codex-corpus-handoff\output\round4-codex.json .\eval\corpora\
-uv run python scripts/eval_classifier.py round4-codex --dry-run
+Copy-Item ..\_codex-corpus-handoff\output\*.json .\eval\corpora\
+uv run python scripts/eval_classifier.py --list
+uv run python scripts/eval_classifier.py <corpus-id> --dry-run
 ```
 
 `--dry-run` runs stage 1 alone and makes no API calls. Do that first: it is free,
 and stage 1's recall on a genuinely unfamiliar corpus is the honest baseline the
 stage-2 number has to beat.
+
+## Round 5: a probe and a measurement are different things
+
+Round 5 commissions two files from one handoff, and the split is the point.
+
+`round5-payment-probe` is **directed**. The brief names the KB-006 paragraph its
+cases are written against — the verified-payment exception that round 4's
+`verified_vendor_bank_move` produced. That exception is a carve-out in a safety
+policy, written in response to a single case and never tested, and "I already
+called and verified this" is precisely what a wire-fraud email asks the victim to
+believe. Its elements need cases sitting on each of them.
+
+Directing the author is what makes that possible and is also what disqualifies
+the result as a performance estimate: the sample is shaped by the commissioner's
+worry, which is exactly the defect rounds 1-3 kept re-committing. So the numbers
+from this file are never quoted as recall or precision. **A probe finds defects.
+It does not estimate performance.** Read it case by case.
+
+`round5-codex` is **undirected** — no seams named, no scenarios suggested, only
+counts and format. It is small, so its numbers are noisy, but they are unshaped,
+and it is the file a headline figure may come from.
+
+Two constraints on the undirected file are recorded as leakage in its own
+`provenance`: payment-detail changes are excluded (that subject was briefed in
+the other file and cases on it would inherit the briefing), and half its
+incidents must fall outside KB-006's named list.
+
+Round 4's brief mixed both modes into one file — commissioned directions for the
+`hard_negative` cases, free authorship for the incidents — and recorded the mix
+in prose, which worked only because the boundary happened to fall along
+`case_type`. It does not in round 5, where directed cases span every type. Two
+files is the version of that honesty which does not depend on a coincidence.
 
 ## Reading a result
 
@@ -113,8 +155,8 @@ value and loses measurement value.
 
 | Case | Corpus | What it changed | Replacement |
 |---|---|---|---|
-| `verified_vendor_bank_move` | round4-codex | **KB-006 amended**, 2026-07-29. It described a vendor bank-detail change verified by calling a number already in the vendor master and signed off internally, and stage 2 refused it. The model was following its rubric: KB-006 bullet 6 flagged payment-detail changes with no carve-out for verification. The defect was in the policy, not the classifier, so the policy gained a narrow exception with an explicit anti-abuse clause (verification asserted inside the request does not count; urgency overrides). Note the direction of the fix — the classifier prompt was **not** touched, because tuning the prompt against a case from the corpus measuring it is exactly the failure of rounds one through three. | pending |
-| `fake_voicemail_email_ignored` | round4-codex | **`security.py` anchored**, 2026-07-31. Every pattern now begins with `\b`, and so does every alternation following a variable-length gap. Logged unfixed after round 4 and fixed now — see below for what changed the calculation. | pending |
+| `verified_vendor_bank_move` | round4-codex | **KB-006 amended**, 2026-07-29. It described a vendor bank-detail change verified by calling a number already in the vendor master and signed off internally, and stage 2 refused it. The model was following its rubric: KB-006 bullet 6 flagged payment-detail changes with no carve-out for verification. The defect was in the policy, not the classifier, so the policy gained a narrow exception with an explicit anti-abuse clause (verification asserted inside the request does not count; urgency overrides). Note the direction of the fix — the classifier prompt was **not** touched, because tuning the prompt against a case from the corpus measuring it is exactly the failure of rounds one through three. | round 5, `round5-payment-probe` — commissioned to probe the exception this case created, not merely to replace the case |
+| `fake_voicemail_email_ignored` | round4-codex | **`security.py` anchored**, 2026-07-31. Every pattern now begins with `\b`, and so does every alternation following a variable-length gap. Logged unfixed after round 4 and fixed now — see below for what changed the calculation. | round 5, `round5-codex` (undirected) |
 
 ### Round 4's unfixed defect, and why round 5 fixed it
 

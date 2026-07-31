@@ -639,6 +639,9 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
 - The round-four figures rest on n=40, one corpus, one author, one model. The
   precision half was written to seams suggested in the commissioning brief;
   recall was not. Two of those 40 cases are now spent, so a rerun measures 38.
+- KB-006's verified-payment exception is a carve-out in a safety policy, added in
+  response to one case and not yet tested against anyone trying to abuse it.
+  `round5-payment-probe` is commissioned for exactly that and is not yet back.
 - `search_kb`'s `topic_hint` cannot restrict results to a topic. It folds its
   words into the query, so it promotes matches rather than filtering them. It
   was called `category`, which implied otherwise; real filtering would mean
