@@ -132,6 +132,34 @@ FALSE_POSITIVES = [
         "Locked out after retrying",
         "I didn't receive the reset email, so I retried and now I'm locked out.",
     ),
+    # --- Spent, from round4-codex (see eval/README.md ledger) ----------------
+    # Retired here on 2026-07-31 because the boundary fix in security.py was
+    # made in response to it. It measures nothing now; it stops a regression.
+    (
+        "fake_voicemail_email_ignored",
+        "junk voicemail email",
+        "Got a strange 'new voicemail' email from outside. I did not press "
+        "anything. I did not open the included file, reply, or type information "
+        "anywhere. It is deleted; do you want the sender address?",
+    ),
+]
+
+# --- Spent at stage 2, kept here for the stage-1 half only -------------------
+# `verified_vendor_bank_move` was refused by the CLASSIFIER in round 4, and the
+# fix went into KB-006 (a verified-payment exception), not into these patterns.
+# Stage 1 never flagged it, so this asserts the weaker of the two claims: that
+# the scan still lets a verified payment change through. The claim that actually
+# broke — that stage 2 clears it under the amended policy — needs a live model
+# and therefore cannot be a regression test here. CI excludes live stage-2 runs
+# by design; it is measured by `scripts/eval_classifier.py`, not by pytest.
+STAGE_ONE_HALF_OF_A_SPENT_CASE = [
+    (
+        "verified_vendor_bank_move",
+        "update oak street bank info",
+        "Oak Street Medical moved banks and sent new ACH instructions. I called "
+        "Jenna at the number already saved in our vendor master. She confirmed "
+        "the exact numbers, and our controller signed the change form.",
+    ),
 ]
 
 
@@ -162,6 +190,67 @@ def test_routine_ticket_is_not_refused(case_id: str, subject: str, body: str) ->
         f"{case_id}: wrongly flagged as a security incident by "
         f"{[h.id for h in hits]}"
     )
+
+
+@pytest.mark.parametrize(
+    "case_id,subject,body",
+    [pytest.param(*c, id=c[0]) for c in STAGE_ONE_HALF_OF_A_SPENT_CASE],
+)
+def test_stage_one_leaves_verified_payment_change_alone(
+    case_id: str, subject: str, body: str
+) -> None:
+    """The deterministic scan must not refuse a payment change that KB-006's
+    narrow exception permits. Passing this says nothing about stage 2, which is
+    where the round-4 defect actually was — read the docstring above the list."""
+    hits = security.scan(subject, body)
+    assert not hits, f"{case_id}: stage 1 refused it — {[h.id for h in hits]}"
+
+
+def test_every_pattern_is_anchored() -> None:
+    """No pattern may begin matching inside a word.
+
+    Round 4 found `ran` matching the middle of "st-RAN-ge", which turned a user
+    who ignored a phishing email into a refused ticket. The instance was easy to
+    fix; the class was not, because nothing stopped the next pattern from being
+    written the same way. This test is that stop.
+
+    Anchoring the START only is deliberate. A trailing `\\b` would break the
+    stemming the patterns rely on ("email" must match "emails", "ask" must match
+    "asked"), and a mid-word start is the whole defect.
+
+    A pattern beginning with an escaped literal `\\.` is allowed: a dot cannot
+    begin inside a word in the sense that matters, and one pattern legitimately
+    starts with the file extension it is looking for.
+    """
+    offenders: list[str] = []
+
+    for indicator in security.INDICATORS:
+        patterns = (
+            list(indicator.any_of)
+            + [p for group in indicator.all_of for p in group]
+            + list(indicator.unless_any)
+        )
+        for pattern in patterns:
+            if not pattern.startswith((r"\b", "\\.")):
+                offenders.append(f"{indicator.id}: {pattern!r}")
+
+    assert not offenders, (
+        "unanchored pattern(s) — prefix each with \\b so it cannot match "
+        "mid-word:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_anchoring_is_enforced_where_the_patterns_are_built() -> None:
+    """The reusable fragments are shared by several indicators and are the ones
+    that actually broke, so they are checked directly rather than only through
+    the indicators that happen to use them today."""
+    unanchored = [
+        pattern
+        for group in (security._MESSAGE_OBJECT, security._BEHAVIOUR_CHANGE)
+        for pattern in group
+        if not pattern.startswith(r"\b")
+    ]
+    assert not unanchored, f"unanchored shared fragment(s): {unanchored}"
 
 
 def test_architectural_claim_still_holds() -> None:

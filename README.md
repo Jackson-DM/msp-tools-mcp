@@ -340,9 +340,20 @@ email and said explicitly they opened nothing, replied to nothing, typed nothing
 The scan refused it on evidence `("range 'new voicemail", "strange")` — matching
 a trigger across the interior of "st**range**", then reading the user's adjective
 for the *email* as a change in *system* behaviour. That is the same
-wrong-referent fault the round-two rewrite claimed to have fixed. It is logged
-rather than patched: fixing it converts the case into training data, and stage
-1's result is not in any doubt at 15%.
+wrong-referent fault the round-two rewrite claimed to have fixed.
+
+Round 4 logged it rather than patching it, on the grounds that fixing it spends
+the case and stage 1's 15% was not in doubt either way. Round 5 fixed it anyway,
+because that reasoning weighed the number and not the fault class. Round 2 did
+not close "wrong object"; it closed the instances of it that had been found, and
+an unanchored alternation was an open route back in. The next arrival through
+that route is as likely to be a false negative as a false positive.
+
+The fix is therefore a rule, not an edit. Every pattern is anchored at its start,
+and a test walks the whole indicator table and fails on any pattern that could
+begin matching mid-word — including ones added later, by someone who has not read
+this paragraph. It cost no recall: stage 1 held at 15% and its precision went to
+100%.
 
 After the KB-006 amendment, **stage 2 made no errors on any of the 37 tickets
 that reached it.**
@@ -614,9 +625,6 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
   Measured on a held-out corpus it catches 3 of 20 incidents, including only 3 of
   the 10 that KB-006 names explicitly. It is a floor, and a low one — its value
   is that it cannot be argued with, not its coverage.
-- One logged, unfixed stage-1 defect: trigger patterns lack word-boundary
-  anchoring, so "st**range**" matches a message trigger. See the ledger in
-  `eval/README.md`.
 - The round-four figures rest on n=40, one corpus, one author, one model. The
   precision half was written to seams suggested in the commissioning brief;
   recall was not.

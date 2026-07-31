@@ -106,9 +106,33 @@ value and loses measurement value.
 | Case | Corpus | What it changed | Replacement |
 |---|---|---|---|
 | `verified_vendor_bank_move` | round4-codex | **KB-006 amended**, 2026-07-29. It described a vendor bank-detail change verified by calling a number already in the vendor master and signed off internally, and stage 2 refused it. The model was following its rubric: KB-006 bullet 6 flagged payment-detail changes with no carve-out for verification. The defect was in the policy, not the classifier, so the policy gained a narrow exception with an explicit anti-abuse clause (verification asserted inside the request does not count; urgency overrides). Note the direction of the fix — the classifier prompt was **not** touched, because tuning the prompt against a case from the corpus measuring it is exactly the failure of rounds one through three. | pending |
+| `fake_voicemail_email_ignored` | round4-codex | **`security.py` anchored**, 2026-07-31. Every pattern now begins with `\b`, and so does every alternation following a variable-length gap. Logged unfixed after round 4 and fixed now — see below for what changed the calculation. | pending |
+
+### Round 4's unfixed defect, and why round 5 fixed it
+
+Round 4 logged the anchoring bug and deliberately left it: fixing it would spend
+the case, and stage 1's 15% recall was already decisive, so one fewer false
+positive changed no conclusion. That reasoning was about the *number*. What made
+it wrong was the *fault class*.
+
+The trigger matched inside "st-**range**": the `ran` alternative of the
+message-object rule, firing on the middle of an adjective the user had applied to
+an email rather than to a machine. `security.py`'s own docstring lists "wrong
+object" as fault 2, resolved in round 2. It was not resolved; it was resolved
+*case by case*, and an unanchored alternation was a route back into it that the
+round-2 fixes never closed. A defect that reopens a fault class the code claims
+to have closed is worth more than one false positive, because the next instance
+of it will be a false negative.
+
+So the fix is a rule rather than an edit: `test_every_pattern_is_anchored` walks
+the whole indicator table and fails on any pattern that could begin matching
+mid-word. The anchoring cost no recall — stage 1 held at 15% on round4-codex and
+precision went 75% to 100%, false positives to zero.
+
+Only the *start* of a pattern is anchored. A trailing `\b` would break the
+stemming the rules depend on ("email" must still match "emails"), and mid-word
+starts were the entire defect.
 
 ### Logged defects, not fixed
 
-| Defect | Evidence | Why not fixed |
-|---|---|---|
-| `security.py` substring matching has no word-boundary anchoring. `fake_voicemail_email_ignored` — a user who received a phishing email and explicitly did nothing — trips `attachment_or_link_then_behavior_change` on evidence `("range 'new voicemail", "strange")`. The trigger matched across the interior of "st-**range**", and "strange" (the user's adjective for the *email*) was read as a change in *system* behaviour. | round4-codex, stage 1 | Fixing it makes the case training data and requires commissioning a replacement. Stage 1's round-4 result is already decisive at 15% recall; one fewer false positive would not alter any conclusion. This is the same wrong-referent and proximity fault class that `security.py`'s docstring claims round two resolved, which is itself the more interesting finding. |
+None outstanding.

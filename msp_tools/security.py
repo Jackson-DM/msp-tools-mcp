@@ -31,6 +31,23 @@ tests/test_adversarial_corpus.py. Four distinct faults, addressed here:
    half was implemented. A user who clicked a phishing link but entered nothing
    received a cheerful draft. That was the most serious defect found.
 
+5. NO WORD BOUNDARIES (round 4, fixed 2026-07-31). Patterns were substrings, so
+   a trigger could match across the interior of an unrelated word: the `ran`
+   alternative of the message-object rule matched inside "st-RAN-ge", and a user
+   who received a phishing email and correctly ignored it was refused on the
+   evidence "range 'new voicemail". Note that this is fault 2 again — the wrong
+   object — arriving through a mechanism the round-2 fix did not close, which is
+   the more interesting half of the finding: the rules were corrected case by
+   case, so a new route to the same fault stayed open.
+
+   Every pattern is now anchored at its start, and so is every alternation that
+   follows a variable-length gap (`\b(?:from|in)\b`, or "in" matches inside
+   "information"). `test_every_pattern_is_anchored` enforces this on the whole
+   table, because the lesson above is that fixing the instances found is not the
+   same as closing the class. Only the START of a pattern is anchored: trailing
+   boundaries would break plural and inflected matches ("emails", "clicking"),
+   and mid-word STARTS are the entire defect.
+
 STRONG VS WEAK EVIDENCE
 -----------------------
 `any_of` is strong: one match is sufficient on its own, and no exculpatory
@@ -90,10 +107,14 @@ class Indicator:
 _MESSAGE_OBJECT = (
     r"\battachment\b",
     r"\battached\b",
-    r"(?:clicked|opened|double-?clicked|ran|downloaded)[^.]{0,60}?"
-    r"(?:e-?mail|message|attachment|link|invite)",
-    r"(?:link|file|invoice|notice|document)[^.]{0,30}?(?:from|in)[^.]{0,30}?"
-    r"(?:e-?mail|message)",
+    # `\bran` matters here specifically: unanchored, it matched inside "strange".
+    r"\b(?:clicked|opened|double-?clicked|ran|downloaded)[^.]{0,60}?"
+    r"\b(?:e-?mail|message|attachment|link|invite)",
+    # `\b(?:from|in)\b` needs BOTH sides: "in" otherwise matches inside
+    # "information", so "the document with the pricing information in my email"
+    # satisfied a rule about attachments.
+    r"\b(?:link|file|invoice|notice|document)[^.]{0,30}?\b(?:from|in)\b"
+    r"[^.]{0,30}?\b(?:e-?mail|message)",
 )
 
 # Any change in system behaviour, per KB-006's "ANY change".
@@ -106,15 +127,15 @@ _BEHAVIOUR_CHANGE = (
     r"\bweird\b",
     r"\bstrange\b",
     r"\bfan\b",
-    r"full speed",
-    r"on (?:its|their) own",
-    r"by itself",
-    r"run(?:s|ning)? differently",
-    r"ever since",
-    r"right after",
-    r"since then",
+    r"\bfull speed",
+    r"\bon (?:its|their) own",
+    r"\bby itself",
+    r"\brun(?:s|ning)? differently",
+    r"\bever since",
+    r"\bright after",
+    r"\bsince then",
     r"\bwon'?t (?:start|boot|open)\b",
-    r"acting (?:up|funny|strange)",
+    r"\bacting (?:up|funny|strange)",
     r"\bunresponsive\b",
 )
 
@@ -125,40 +146,40 @@ INDICATORS: tuple[Indicator, ...] = (
         kb_ref="KB-006",
         description="Files renamed or encrypted, or a ransom / recovery demand present.",
         any_of=(
-            r"how[\s_-]?to[\s_-]?recover",
+            r"\bhow[\s_-]?to[\s_-]?recover",
             r"\bransom(?:ware)?\b",
             r"\bdecrypt(?:ed|ion)?\b",
             r"\bbitcoin\b",
             r"\bcrypto(?:currency)?\b",
-            r"(?:pay|send)[^.]{0,30}?(?:to (?:get|recover|unlock)|for the key)",
-            r"get the key",
-            r"files? (?:are|were|got|have been) (?:encrypted|locked)",
+            r"\b(?:pay|send)\b[^.]{0,30}?\b(?:to (?:get|recover|unlock)|for the key)",
+            r"\bget the key",
+            r"\bfiles? (?:are|were|got|have been) (?:encrypted|locked)",
         ),
         all_of=(
             (
                 r"\brenamed\b",
                 r"\bextension\b",
-                r"(?:end|ends|ending) (?:in|with) \.?[a-z0-9]{2,6}\b",
+                r"\b(?:end|ends|ending) (?:in|with) \.?[a-z0-9]{2,6}\b",
                 r"\.[a-z0-9]{2,6}\b at the end",
             ),
             (
-                r"every file",
-                r"every (?:word )?document",
-                r"all (?:my|the) files",
-                r"documents folder",
-                r"shared drive",
-                r"none of them will open",
+                r"\bevery file",
+                r"\bevery (?:word )?document",
+                r"\ball (?:my|the) files",
+                r"\bdocuments folder",
+                r"\bshared drive",
+                r"\bnone of them will open",
                 r"\binaccessible\b",
-                r"won'?t open",
+                r"\bwon'?t open",
             ),
         ),
         # A user restoring a folder they deleted is not an incident. Cannot
         # suppress any_of — an actual ransom note outranks any of this.
         unless_any=(
-            r"from (?:friday'?s?|last night'?s?|the|our|a) backup",
-            r"restore (?:it |them )?from backup",
+            r"\bfrom (?:friday'?s?|last night'?s?|the|our|a) backup",
+            r"\brestore (?:it |them )?from backup",
             r"\bi deleted\b",
-            r"by mistake",
+            r"\bby mistake",
             r"\baccidentally\b",
         ),
     ),
@@ -179,10 +200,10 @@ INDICATORS: tuple[Indicator, ...] = (
                 r"\bsuspicious\b",
                 r"\bfake\b",
                 r"\bspoof",
-                r"not legitimate",
-                r"looked like (?:our|a)",
-                r"pretend(?:ing|ed) to be",
-                r"asked me to (?:sign in|log ?in|verify|re-?verify)",
+                r"\bnot legitimate",
+                r"\blooked like (?:our|a)",
+                r"\bpretend(?:ing|ed) to be",
+                r"\basked me to (?:sign in|log ?in|verify|re-?verify)",
                 r"\bimpersonat",
             ),
         ),
@@ -209,15 +230,19 @@ INDICATORS: tuple[Indicator, ...] = (
             # The suspicious thing must be the SITE, not the user's monitor.
             # "the dashboard looked off on my monitor" is a UI complaint.
             (
-                r"(?:web )?address (?:looked|looks|was|seemed)",
-                r"(?:url|domain|site|web ?page|link) (?:looked|looks|was|seemed)",
+                r"\b(?:web )?address (?:looked|looks|was|seemed)",
+                # `web ?site` is listed before `site` because anchoring the
+                # alternation would otherwise drop "the website looked wrong":
+                # `\bsite` cannot match inside "website".
+                r"\b(?:url|domain|web ?site|site|web ?page|link) "
+                r"(?:looked|looks|was|seemed)",
                 r"\bphish",
                 r"\bscam\b",
                 r"\bspoof",
                 r"\bfake\b",
-                r"not (?:our|the real|the actual)",
-                r"looked like our",
-                r"wasn'?t (?:our|the real|right)",
+                r"\bnot (?:our|the real|the actual)",
+                r"\blooked like our",
+                r"\bwasn'?t (?:our|the real|right)",
             ),
         ),
         window=0,
@@ -236,37 +261,37 @@ INDICATORS: tuple[Indicator, ...] = (
         kb_ref="KB-006",
         description="Browser hijack: self-opening tabs, changed homepage/start page, fake warnings.",
         any_of=(
-            r"opens? tabs? by itself",
-            r"tabs? (?:open|opening) (?:by them|on their own|by itself)",
-            r"(?:home ?page|start ?page) (?:changed|is different|got changed|is now)",
-            r"changed my (?:home ?page|start ?page)",
-            r"fake[\s-]?looking virus",
-            r"fake virus warning",
-            r"instead of (?:google|bing|our)",
-            r"search (?:site|engine) i'?ve never",
+            r"\bopens? tabs? by itself",
+            r"\btabs? (?:open|opening) (?:by them|on their own|by itself)",
+            r"\b(?:home ?page|start ?page) (?:changed|is different|got changed|is now)",
+            r"\bchanged my (?:home ?page|start ?page)",
+            r"\bfake[\s-]?looking virus",
+            r"\bfake virus warning",
+            r"\binstead of (?:google|bing|our)",
+            r"\bsearch (?:site|engine) i'?ve never",
         ),
         all_of=(
             (
                 r"\bredirect(?:ed|ing|s)?\b",
-                r"sends me to",
-                r"takes me to",
+                r"\bsends me to",
+                r"\btakes me to",
                 r"\bgoing to\b",
             ),
             (
                 r"\bads?\b",
                 r"\badvertis",
-                r"shopping (?:pages?|sites?)",
-                r"search results?",
-                r"never heard of",
+                r"\bshopping (?:pages?|sites?)",
+                r"\bsearch results?",
+                r"\bnever heard of",
                 r"\bpop-?ups?\b",
             ),
         ),
         # A benefits portal legitimately redirecting to Microsoft SSO is not a
         # hijack when the user says it worked.
         unless_any=(
-            r"completed normally",
-            r"worked (?:fine|normally|as expected)",
-            r"that'?s expected",
+            r"\bcompleted normally",
+            r"\bworked (?:fine|normally|as expected)",
+            r"\bthat'?s expected",
         ),
     ),
     Indicator(
@@ -280,12 +305,14 @@ INDICATORS: tuple[Indicator, ...] = (
             # Must be an INBOUND request from outside. Editing your own invoice
             # template is routine work, not fraud.
             (
-                r"(?:emailed|e-?mail|message|contacted|called)[^.]{0,40}?ask",
-                r"ask(?:ing|ed)[^.]{0,40}?(?:update|change|send|pay|go to)",
-                r"(?:we|they) (?:got|received)[^.]{0,30}?(?:an? )?e-?mail",
-                r"request(?:ing|ed) (?:that |we |us )?(?:update|change|pay)",
-                r"they say",
-                r"instructions for",
+                # `\bask` on both sides: unanchored it matched inside "task",
+                # so "the vendor emailed about the invoice task" was a wire fraud.
+                r"\b(?:emailed|e-?mail|message|contacted|called)[^.]{0,40}?\bask",
+                r"\bask(?:ing|ed)[^.]{0,40}?\b(?:update|change|send|pay|go to)",
+                r"\b(?:we|they) (?:got|received)[^.]{0,30}?(?:an? )?e-?mail",
+                r"\brequest(?:ing|ed) (?:that |we |us )?(?:update|change|pay)",
+                r"\bthey say",
+                r"\binstructions for",
             ),
             (
                 r"\bvendor\b",
@@ -293,16 +320,16 @@ INDICATORS: tuple[Indicator, ...] = (
                 r"\binvoices?\b",
                 r"\bbilling\b",
                 r"\bpayable\b",
-                r"accounts?-?receivable",
+                r"\baccounts?-?receivable",
                 r"\bap\b",
             ),
             (
-                r"bank (?:account|details)",
-                r"payment (?:details|information|info)",
+                r"\bbank (?:account|details)",
+                r"\bpayment (?:details|information|info)",
                 r"\bwire\b",
                 r"\bach\b",
-                r"routing (?:number|details)",
-                r"account (?:number|details)",
+                r"\brouting (?:number|details)",
+                r"\baccount (?:number|details)",
                 r"\bremittance\b",
                 r"\bbill go to\b",
             ),
@@ -315,27 +342,27 @@ INDICATORS: tuple[Indicator, ...] = (
         description="Mail appearing to come from the client's own domain that they did not send.",
         any_of=(
             r"\bspoof(?:ed|ing)?\b",
-            r"appear(?:s|ed)? to come from",
-            r"pretending to be",
-            r"with me as (?:the )?sender",
-            r"not in my sent items",
+            r"\bappear(?:s|ed)? to come from",
+            r"\bpretending to be",
+            r"\bwith me as (?:the )?sender",
+            r"\bnot in my sent items",
         ),
         all_of=(
             # Someone ELSE received it. "The copier scans were never sent to my
             # email" is a delivery fault, not impersonation.
             (
-                r"(?:customers?|clients?|recipients?|people|someone|vendors?)"
-                r"[^.]{0,40}?(?:received|got|getting|called|reported)",
-                r"received[^.]{0,30}?from (?:us|our)",
-                r"emails? from us",
+                r"\b(?:customers?|clients?|recipients?|people|someone|vendors?)"
+                r"[^.]{0,40}?\b(?:received|got|getting|called|reported)",
+                r"\breceived[^.]{0,30}?\bfrom (?:us|our)",
+                r"\bemails? from us",
             ),
             (
-                r"never sent",
-                r"(?:we|they|i) didn'?t send",
-                r"not from us",
-                r"nothing to do with it",
-                r"we never",
-                r"look like ours",
+                r"\bnever sent",
+                r"\b(?:we|they|i) didn'?t send",
+                r"\bnot from us",
+                r"\bnothing to do with it",
+                r"\bwe never",
+                r"\blook like ours",
             ),
         ),
         window=0,
@@ -352,24 +379,24 @@ INDICATORS: tuple[Indicator, ...] = (
             # out has admitted the cause.
             (
                 r"\bi didn'?t (?:do|change|reset|request|authori[sz]e|make|touch)\b",
-                r"i did not (?:do|change|reset|request|authori[sz]e|make|touch)",
+                r"\bi did not (?:do|change|reset|request|authori[sz]e|make|touch)",
                 r"\bi never (?:changed|reset|requested|authori[sz]ed|did)\b",
-                r"wasn'?t me",
-                r"no[- ]?(?:one|body) (?:here|else)",
-                r"i was asleep",
-                r"haven'?t touched",
-                r"didn'?t make that change",
-                r"i don'?t recogni[sz]e",
+                r"\bwasn'?t me",
+                r"\bno[- ]?(?:one|body) (?:here|else)",
+                r"\bi was asleep",
+                r"\bhaven'?t touched",
+                r"\bdidn'?t make that change",
+                r"\bi don'?t recogni[sz]e",
             ),
             (
                 r"\block(?:ed|out)\b",
-                r"password (?:was )?(?:reset|change|changed|updated)",
-                r"reset my password",
+                r"\bpassword (?:was )?(?:reset|change|changed|updated)",
+                r"\breset my password",
                 r"\bmfa\b",
                 r"\btwo[- ]factor\b",
-                r"verification (?:code|prompt)",
-                r"sign[- ]?in (?:attempt|alert)",
-                r"account settings",
+                r"\bverification (?:code|prompt)",
+                r"\bsign[- ]?in (?:attempt|alert)",
+                r"\baccount settings",
             ),
         ),
         window=0,
