@@ -54,25 +54,41 @@ the detector.**
 ## Commissioning a corpus
 
 ```powershell
-.\eval\handoff\make-handoff.ps1        # builds an isolated dir OUTSIDE this repo
-cd ..\_codex-corpus-handoff
+.\eval\handoff\make-handoff.ps1        # builds an isolated dir under TEMP
+cd $env:TEMP\_codex-corpus-handoff
 codex                                   # reads AGENTS.md; give it nothing else
 ```
 
-`make-handoff.ps1` refuses a destination inside the repo, because a working
-directory under the repo root leaves `cd ..` between the author and
-`msp_tools/security.py`, `msp_tools/classifier.py`, and a README that names every
-case the guardrail has historically missed. Isolation you can verify on the
-filesystem beats isolation the author promised.
+### What the isolation actually guarantees
 
-The script prints the complete contents of the directory it built. Read that
-list. Anything on it beyond the brief, the format reference, the template, and
-KB-006 is a leak.
+It cannot make the repo unreachable. The author has a filesystem, and no script
+run on the same machine changes that. What it enforces is that the repo is not
+handed over, and that **nothing in or around the working directory points at
+it** — which is what stands between an honest author and inadvertent
+contamination, and inadvertent is the realistic failure mode. Three checks, each
+verifiable on disk rather than promised:
+
+| | Refused because |
+|---|---|
+| destination inside the repo | `cd ..` reaches `security.py` |
+| repo inside the destination | a bare `ls` names it |
+| the two are siblings | `ls ..` names it |
+
+The third is why the default lives under `TEMP` rather than beside the repo.
+Round 5's first handoff went to `..\_codex-corpus-handoff`, which satisfied
+"outside the repo" while `ls ..` still printed `msp-tools-mcp` next to it — one
+guessing step, not zero, and this file claimed zero. The rule and the prose now
+agree.
+
+The script prints the complete contents of the directory it built, including
+directories and hidden entries. Read that list. Anything on it beyond the brief,
+the format reference, the template, and KB-006 is a leak; an empty `output\` is
+expected.
 
 Then:
 
 ```powershell
-Copy-Item ..\_codex-corpus-handoff\output\*.json .\eval\corpora\
+Copy-Item $env:TEMP\_codex-corpus-handoff\output\*.json .\eval\corpora\
 uv run python scripts/eval_classifier.py --list
 uv run python scripts/eval_classifier.py <corpus-id> --dry-run
 ```

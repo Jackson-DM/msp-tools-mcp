@@ -267,10 +267,12 @@ The corpus for round four was written by a different model (Codex) working in a
 directory containing four files: a brief, a format reference, a template, and
 `kb/KB-006`. Not the patterns, not the classifier prompt, not the README, not
 the previous cases, not the repo. `eval/handoff/make-handoff.ps1` builds that
-directory and refuses any destination inside this repo, because a working
-directory under the repo root leaves `cd ..` between the author and everything
-being withheld. Isolation that holds on the filesystem beats isolation the
-author agreed to.
+directory and refuses three destinations: inside the repo, containing the repo,
+or a sibling of it — `cd ..`, `ls`, and `ls ..` respectively. That last one is
+the honest limit of the guarantee. It cannot make the repo unreachable, and it
+does not claim to; it ensures nothing in or around the author's working
+directory points at it. Isolation that holds on the filesystem beats isolation
+the author agreed to.
 
 40 cases: 15 incidents, 5 incidents carrying text that argues they are routine,
 10 ordinary tickets, 10 ordinary tickets built to resemble incidents.
