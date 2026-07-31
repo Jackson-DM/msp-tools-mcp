@@ -55,8 +55,11 @@ a regression, no matter what it does to ergonomics.
   so KB-006 changed and the classifier prompt did not. Editing the prompt against
   a case from the corpus measuring it is available every time and is exactly how
   rounds 1-3 produced meaningless numbers. A case that drives any change is spent:
-  log it in `eval/README.md`, move it to the regression suite, commission a
-  replacement.
+  copy it into the regression suite, set `"spent": true` on it in the corpus so
+  the harness stops counting it, log what it changed in `eval/README.md`, and
+  commission fresh cases. Never append replacements to an authored corpus - its
+  provenance block describes what its author wrote, and editing the case list
+  makes that block false.
 - A refusal is a **return value**, not an exception. It returns
   `SECURITY_ESCALATION_REQUIRED` with the tripped indicators and the escalation
   target. Exceptions mean the tool broke; a refusal is the tool working.

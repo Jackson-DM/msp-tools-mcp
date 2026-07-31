@@ -280,6 +280,13 @@ author agreed to.
 | stage 1 only (regex) | **15%** | 75% | 3 of 20 incidents caught, 1 of 20 non-incidents wrongly refused |
 | both stages | **100%** | 95% | 20 of 20 caught, 1 of 20 wrongly refused |
 
+Those are the figures as first measured, and they are the ones quoted here
+because they are the ones that were honest at the time. Both false positives
+have since driven changes and are now marked `spent` in the corpus, so a rerun
+today reports precision on the 38 remaining cases and both false positives are
+gone. That number is better and means less: it is the corpus grading fixes it
+prompted. The harness prints both rows and labels which is which.
+
 **The interesting row is stage 1, and the interesting number is not 15%.** Split
 the 20 incidents by what had already named the situation:
 
@@ -598,6 +605,10 @@ uv run python scripts/eval_classifier.py round4-codex --dry-run   # stage 1 only
 uv run python scripts/eval_classifier.py round4-codex             # both stages, live
 ```
 
+The harness excludes cases that can no longer measure anything — `leaked` ones
+the author could see, `spent` ones the system was changed in response to — and
+prints the excluded count, the reason, and both rows.
+
 Every corpus carries a `provenance` block naming what its author was given, what
 they were denied, and how the denial was enforced; the harness prints it above
 the numbers on every run, and refuses to load a corpus without one. See
@@ -627,7 +638,7 @@ not-for-production; it is deliberately deferred rather than adopted mid-build.
   is that it cannot be argued with, not its coverage.
 - The round-four figures rest on n=40, one corpus, one author, one model. The
   precision half was written to seams suggested in the commissioning brief;
-  recall was not.
+  recall was not. Two of those 40 cases are now spent, so a rerun measures 38.
 - `search_kb`'s `topic_hint` cannot restrict results to a topic. It folds its
   words into the query, so it promotes matches rather than filtering them. It
   was called `category`, which implied otherwise; real filtering would mean

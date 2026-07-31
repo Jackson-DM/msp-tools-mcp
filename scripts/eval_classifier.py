@@ -256,6 +256,7 @@ def main() -> None:
     # they were actually measuring.
     types = [c["case_type"] for c in data["cases"]]
     leaked = [bool(c.get("leaked")) for c in data["cases"]]
+    spent = [bool(c.get("spent")) for c in data["cases"]]
 
     print()
     for t in ("incident", "injection", "routine", "hard_negative"):
@@ -264,13 +265,42 @@ def main() -> None:
             correct = sum(1 for e, a in subset if e == a)
             print(f"  {t:14} {correct}/{len(subset)} correct")
 
-    if any(leaked):
-        unleaked = [r for r, lk in zip(both, leaked) if not lk]
-        n_leaked = sum(leaked)
+    # A case can stop being a measurement in two ways, and both have to be
+    # visible or a corpus decays into a test suite without anyone noticing:
+    # LEAKED, the author saw the situation described in the thing being scored;
+    # and SPENT, the thing being scored was changed in response to this case.
+    # The second is the one that creeps in, because it happens later and to a
+    # file nobody re-reads. Both are excluded from the quotable row.
+    if any(leaked) or any(spent):
+        qualifying = [
+            r for r, lk, sp in zip(both, leaked, spent) if not (lk or sp)
+        ]
         print()
-        print(f"  {n_leaked} case(s) marked LEAKED — situation named in the classifier's own prompt.")
-        print("  " + _line("un-leaked subset only", unleaked).strip())
-        print("  Quote the un-leaked row. The full-corpus row is the prompt grading itself.")
+        if any(leaked):
+            print(
+                f"  {sum(leaked)} case(s) LEAKED - situation named in the "
+                "classifier's own prompt."
+            )
+        if any(spent):
+            print(
+                f"  {sum(spent)} case(s) SPENT - the system was changed in "
+                "response to them. See eval/README.md."
+            )
+            print(
+                "    "
+                + ", ".join(c["id"] for c, sp in zip(data["cases"], spent) if sp)
+            )
+        if qualifying:
+            print("  " + _line("qualifying subset only", qualifying).strip())
+            print(
+                "  Quote the qualifying row. The full-corpus row includes cases "
+                "that can no longer measure anything."
+            )
+        else:
+            print(
+                "  No qualifying cases remain. This corpus is a regression "
+                "suite now; it cannot produce a measurement."
+            )
 
     missed = [c["id"] for c, (_, a) in zip(data["cases"], both) if c["expect_refuse"] and not a]
     over = [c["id"] for c, (_, a) in zip(data["cases"], both) if not c["expect_refuse"] and a]
@@ -280,8 +310,10 @@ def main() -> None:
 
     if missed:
         print()
-        print("Each missed case is now spent: fixing it makes it training data. Move it to")
-        print("tests/test_adversarial_corpus.py and have the corpus author write a replacement.")
+        print("A case you act on is spent: fixing it makes it training data. Copy it into")
+        print("tests/test_adversarial_corpus.py, set \"spent\": true on it here, log it in")
+        print("eval/README.md, and commission fresh cases. Cases you do NOT act on stay")
+        print("live and keep measuring.")
 
 
 if __name__ == "__main__":

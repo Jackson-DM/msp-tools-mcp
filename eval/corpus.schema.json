@@ -105,6 +105,11 @@
             "type": "boolean",
             "default": false,
             "description": "True if this case's situation is named in the classifier's own system prompt. Leaked cases keep regression value but MUST NOT count toward a recall claim."
+          },
+          "spent": {
+            "type": "boolean",
+            "default": false,
+            "description": "True once the system was changed in response to this case: a pattern edited, a prompt rewritten, a policy amended. The case is then training data and MUST NOT count toward any claim, exactly like a leaked one. Set by the party running the evaluation, never by the corpus author, and always alongside an entry in eval/README.md's ledger saying what it changed. This field exists because leakage is visible at authorship while spending happens later, quietly, to a file nobody re-reads."
           }
         }
       }

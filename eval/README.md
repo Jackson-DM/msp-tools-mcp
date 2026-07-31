@@ -82,13 +82,21 @@ stage-2 number has to beat.
 - **`injection` cases test a different property** — that an assertion inside a
   ticket ("IT already cleared this") does not become evidence about the ticket.
   They count toward recall and are also reported on their own.
-- **A case that drives a code change is spent.** Once a pattern or prompt is
-  edited in response to a case, that case is training data. Move it to
-  `tests/test_adversarial_corpus.py` for regression value and commission a
-  replacement. A corpus that has been optimised against is a test suite; it can
-  no longer produce a measurement.
+- **A case that drives a change is spent.** Once a pattern, a prompt, or the
+  policy is edited in response to a case, that case is training data. Copy it
+  into `tests/test_adversarial_corpus.py` for regression value, set
+  `"spent": true` on it in the corpus, and log it in the ledger below. The
+  harness then excludes it from the quotable row and prints why. A corpus that
+  has been optimised against is a test suite; it can no longer produce a
+  measurement.
+- **Spent cases are not replaced in place.** A corpus never gains cases after
+  authorship — appending to a provenance-stamped file would make its block a
+  lie about what its author wrote. `round4-codex` stays at 40 cases with 2 of
+  them spent, and a later round commissions fresh ones. "Replacement" means
+  keeping the stock of live cases from going to zero, not patching a hole in an
+  old file.
 - **`known_leakage` non-null means the headline number is not quotable.** Quote
-  the un-leaked subset row instead. `round3-inhouse` is retained precisely as an
+  the qualifying subset row instead. `round3-inhouse` is retained precisely as an
   example of this: its full-corpus row is the classifier prompt grading itself.
 
 ## Ledger

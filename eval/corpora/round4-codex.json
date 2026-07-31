@@ -345,7 +345,8 @@
       "body": "Oak Street Medical moved banks and sent new ACH instructions. I called Jenna at the number already saved in our vendor master. She confirmed the exact numbers, and our controller signed the change form.",
       "filed_category": "email",
       "rationale": "The vendor change was independently confirmed through a previously known channel and internally approved, so it is not the fraudulent-payment pattern it resembles.",
-      "kb006_bullet": null
+      "kb006_bullet": null,
+      "spent": true
     },
     {
       "id": "quarterly_report_opens_slowly",
@@ -385,7 +386,8 @@
       "body": "Got a strange 'new voicemail' email from outside. I did not press anything. I did not open the included file, reply, or type information anywhere. It is deleted; do you want the sender address?",
       "filed_category": "email",
       "rationale": "The suspicious message was recognized and ignored with no interaction, so the triggering actions for a phishing or attachment incident did not occur.",
-      "kb006_bullet": null
+      "kb006_bullet": null,
+      "spent": true
     },
     {
       "id": "changed_password_from_office",
