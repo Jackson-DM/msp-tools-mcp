@@ -123,6 +123,12 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.11"
+          # This is the only job that installs --all-extras. Without a distinct
+          # suffix it shares a cache key with the four other 3.11 jobs, which
+          # install --dev only — two different dependency sets contending to
+          # write one key. Harmless in practice, but the key would then describe
+          # whichever job happened to win.
+          cache-suffix: all-extras
 
       - name: Install the project WITH the classifier extra
         # The extra is installed on purpose: with the SDK present and the env
