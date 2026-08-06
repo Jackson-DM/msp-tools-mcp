@@ -188,14 +188,38 @@ def main() -> None:
     args = ap.parse_args()
 
     if args.list or not args.corpus:
+        # Print the qualifying count, not just a LEAKED marker. Two different
+        # things were both being called leakage: per-case `leaked`, which
+        # excludes a case from the quotable row, and corpus-level
+        # `known_leakage`, which is a prose disclosure and feeds no computation
+        # at all. Every corpus here carries a disclosure, so the old marker lit
+        # up all six while four of them still had qualifying cases — and a
+        # reader (this project's own README, as it turned out) concluded there
+        # were none left anywhere. A number the reader can check beats a label
+        # they have to interpret.
         print("corpora in eval/corpora/:")
         for p in sorted(CORPORA_DIR.glob("*.json")):
             try:
                 d = json.loads(p.read_text(encoding="utf-8"))
-                leak = "  <-- LEAKED" if d.get("provenance", {}).get("known_leakage") else ""
-                print(f"  {p.stem:22} {len(d.get('cases', [])):>3} cases   {d.get('provenance', {}).get('author', '?')}{leak}")
+                cases = d.get("cases", [])
+                qualifying = sum(
+                    1 for c in cases if not (c.get("leaked") or c.get("spent"))
+                )
+                note = " <-- discloses leakage, read it" if d.get("provenance", {}).get(
+                    "known_leakage"
+                ) else ""
+                state = "REGRESSION SUITE" if qualifying == 0 else f"{qualifying:>3} qualifying"
+                print(
+                    f"  {p.stem:22} {len(cases):>3} cases  {state:>16}   "
+                    f"{d.get('provenance', {}).get('author', '?')}{note}"
+                )
             except Exception as e:  # pragma: no cover - listing is best effort
                 print(f"  {p.stem:22} unreadable: {e}")
+        print(
+            "\n'qualifying' excludes per-case leaked and spent. The disclosure note is\n"
+            "separate: it means the provenance block qualifies the headline number in\n"
+            "prose, and it feeds no computation. Read both; they are not the same thing."
+        )
         if not args.corpus:
             print("\npass one:  uv run python scripts/eval_classifier.py eval/corpora/<id>.json")
         return
@@ -282,9 +306,12 @@ def main() -> None:
                 "classifier's own prompt."
             )
         if any(spent):
+            # Not "the system was changed": round 6 spent 26 cases and shipped
+            # nothing. What spends a case is being used as the target a change
+            # is evaluated against, whether or not the change survived.
             print(
-                f"  {sum(spent)} case(s) SPENT - the system was changed in "
-                "response to them. See eval/README.md."
+                f"  {sum(spent)} case(s) SPENT - used as the target of a change, "
+                "shipped or not. See eval/README.md."
             )
             print(
                 "    "

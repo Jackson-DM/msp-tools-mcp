@@ -109,7 +109,7 @@
           "spent": {
             "type": "boolean",
             "default": false,
-            "description": "True once the system was changed in response to this case: a pattern edited, a prompt rewritten, a policy amended. The case is then training data and MUST NOT count toward any claim, exactly like a leaked one. Set by the party running the evaluation, never by the corpus author, and always alongside an entry in eval/README.md's ledger saying what it changed. This field exists because leakage is visible at authorship while spending happens later, quietly, to a file nobody re-reads."
+            "description": "True once this case has been used as the target a change was evaluated against - a pattern edited, a prompt rewritten, a policy amended, or a candidate rejected because this case moved. Note 'evaluated against', not 'changed by': round 6 spent 26 cases and shipped nothing, because selecting among configurations on a set contaminates the set whichever candidate wins. Spending is forward-looking - it ends the case's ability to measure FUTURE changes and does not retroactively void a number already taken, so the ledger's dates are what mark the boundary. Set by the party running the evaluation, never by the corpus author, and always alongside a ledger entry in eval/README.md. This field exists because leakage is visible at authorship while spending happens later, quietly, to a file nobody re-reads. Distinct from provenance.known_leakage, which is a prose disclosure and feeds no computation."
           }
         }
       }
