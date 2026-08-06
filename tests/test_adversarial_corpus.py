@@ -160,7 +160,31 @@ STAGE_ONE_HALF_OF_A_SPENT_CASE = [
         "Jenna at the number already saved in our vendor master. She confirmed "
         "the exact numbers, and our controller signed the change form.",
     ),
+    # Round 5. Stage 2 refused this one even though all three of KB-006's
+    # conditions are affirmatively in the text; it drove the checklist rewrite of
+    # the classifier prompt. What is asserted here is only that stage 1 keeps its
+    # hands off - which is not nothing, because the moment the scan starts
+    # refusing payment tickets the exception becomes unreachable by construction.
+    (
+        "reno_branch_quickbooks",
+        "cant save new banking",
+        "Called Miguel at the phone number on last year's service agreement "
+        "after his company opened the Reno branch. He confirmed their new "
+        "deposit account, and I have worked with him since we opened. Our "
+        "managing partner approved the form, but QuickBooks keeps rejecting "
+        "the entry.",
+    ),
 ]
+
+# `linen_draft_edit` is spent and deliberately absent from every list in this
+# file. It is a payment change with two of KB-006's three conditions met and the
+# third simply unmentioned; stage 2 cleared it, and the prompt's checklist rewrite
+# is the fix. No assertion here can hold that fix: stage 1 clears the case too, so
+# a passing stage-1 test would be asserting a MISS, and the property that actually
+# broke needs a live model, which CI excludes on purpose. It is recorded in
+# eval/README.md's ledger and verified only by round 6. A fix with no regression
+# test is worth saying out loud rather than papering over with a test that passes
+# for the wrong reason.
 
 
 @pytest.mark.parametrize(

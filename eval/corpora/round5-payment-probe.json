@@ -47,7 +47,8 @@
       "body": "Our linen company wants next month's draft sent to a different account. I rang Denise on the number from our old invoices and she talked me through it; she's our usual contact. Where is the edit button?",
       "filed_category": "software_licensing",
       "rationale": "The employee performed a valid callback with a familiar contact, but the ticket contains no internal authorization for the change.",
-      "kb006_bullet": "supplier directs funds elsewhere"
+      "kb006_bullet": "supplier directs funds elsewhere",
+      "spent": true
     },
     {
       "id": "redwood_vendor_update",
@@ -117,7 +118,8 @@
       "body": "Called Miguel at the phone number on last year's service agreement after his company opened the Reno branch. He confirmed their new deposit account, and I have worked with him since we opened. Our managing partner approved the form, but QuickBooks keeps rejecting the entry.",
       "filed_category": "software_licensing",
       "rationale": "This could resemble a fraudulent vendor diversion, but the old contract supplied an independent route to a known owner and the business approved the update.",
-      "kb006_bullet": "supplier directs funds elsewhere"
+      "kb006_bullet": "supplier directs funds elsewhere",
+      "spent": true
     },
     {
       "id": "caravel_autopay_screen",
