@@ -185,6 +185,16 @@ def main() -> None:
     ap.add_argument("corpus", nargs="?", help="path to a corpus JSON, or a corpus_id in eval/corpora/")
     ap.add_argument("--list", action="store_true", help="list available corpora and exit")
     ap.add_argument("--dry-run", action="store_true", help="stage 1 only; makes no API calls")
+    ap.add_argument(
+        "--samples",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "run stage 2 N times per case and report how often it disagrees with "
+            "itself. Costs N times as much. Stage 1 is deterministic and is run once."
+        ),
+    )
     args = ap.parse_args()
 
     if args.list or not args.corpus:
@@ -247,6 +257,7 @@ def main() -> None:
 
     s1: list[tuple[bool, bool]] = []
     both: list[tuple[bool, bool]] = []
+    unstable_ids: list[tuple[str, int, int]] = []
 
     for c in data["cases"]:
         want = bool(c["expect_refuse"])
@@ -260,19 +271,66 @@ def main() -> None:
         stage1 = bool(security.scan(c["subject"], c["body"]))
         s1.append((want, stage1))
 
-        a = guardrail.assess(ticket, classifier)
-        both.append((want, a.is_security))
+        # Sample the whole assessment, not just stage 2, so the reported verdict
+        # is the one the tool would actually return. Stage 1 is deterministic,
+        # so any variation you see came from the model.
+        runs = [guardrail.assess(ticket, classifier) for _ in range(max(1, args.samples))]
+        refusals = sum(1 for r in runs if r.is_security)
 
-        flag = "" if a.is_security == want else "   <-- WRONG"
-        note = (a.stage if a.is_security else "cleared") + flag
+        # Majority, not "refuse if any run refused". The question here is what a
+        # single production call typically does, and a max-over-samples rule
+        # would report a system nobody is running. Ties break toward refusal,
+        # which is the direction everything else in this repo breaks toward.
+        verdict = refusals * 2 >= len(runs)
+        a = next((r for r in runs if r.is_security == verdict), runs[0])
+        both.append((want, verdict))
+
+        unstable = 0 < refusals < len(runs)
+        if unstable:
+            unstable_ids.append((c["id"], refusals, len(runs)))
+
+        flag = "" if verdict == want else "   <-- WRONG"
+        spread = f" [{refusals}/{len(runs)}]" if len(runs) > 1 else ""
+        if unstable:
+            spread += " UNSTABLE"
+        note = (a.stage if verdict else "cleared") + spread + flag
         print(
             f"{c['id']:24} {c['case_type']:14} {str(want):6} {str(stage1):7} "
-            f"{str(a.is_security):6} {note}"
+            f"{str(verdict):6} {note}"
         )
 
     print()
     print(_line("stage 1 only (regex)", s1))
     print(_line("both stages", both))
+
+    # --- how much of this is noise ---------------------------------------
+    # Round 6 was evaluated at one sample per case. Single cases moved in both
+    # directions between configurations, each movement got a causal explanation,
+    # and at least two of those explanations were wrong. A number with no error
+    # bar cannot support a comparison, and comparisons are what fixes are judged
+    # on. See eval/README.md.
+    n = max(1, args.samples)
+    if n == 1:
+        print()
+        print(
+            "  1 sample per case. This number has no error bar, so it cannot support\n"
+            "  a comparison between configurations. Re-run with --samples 5 before\n"
+            "  concluding that a change helped."
+        )
+    else:
+        pct = 100.0 * len(unstable_ids) / max(1, len(data["cases"]))
+        print()
+        print(f"  {n} samples per case.  unstable: {len(unstable_ids)}/{len(data['cases'])} ({pct:.0f}%)")
+        for cid, r, tot in unstable_ids:
+            print(f"    {cid:38} refused {r}/{tot}")
+        if unstable_ids:
+            print(
+                f"  A difference of fewer than {len(unstable_ids)} cases between two\n"
+                "  configurations is inside this corpus's own disagreement with itself.\n"
+                "  Do not attribute a mechanism to it."
+            )
+        else:
+            print("  Every case was unanimous. Differences of one case are still n=1.")
 
     # --- breakdowns ------------------------------------------------------
     # Reported separately because they answer different questions, and because

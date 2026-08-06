@@ -384,18 +384,47 @@ For the round-6 corpora specifically the harness now says so itself: *"No
 qualifying cases remain. This corpus is a regression suite now; it cannot
 produce a measurement."*
 
-### The measurement problem, unfixed
+### The measurement problem, and `--samples`
 
-The harness runs each case once. Every number in this file and in the README
-rests on a single sample, with no repeats, no agreement statistic, and no
-threshold for what counts as a difference. It was adequate while findings
+The harness used to run each case once. Every earlier number in this file and in
+the README rests on a single sample, with no repeats, no agreement statistic and
+no threshold for what counts as a difference. That was adequate while findings
 reproduced across corpora — stage 1's 3-of-33, the conjunction failure — and it
-is not adequate for evaluating a change.
+was not adequate for evaluating a change, which is how round 6's session produced
+three mechanisms for movements that were probably noise.
 
-Before the next fix is attempted, the harness needs `--samples N` and a
-disagreement column, so a configuration has to clear noise before anyone acts on
-it. That is the actual blocker on progress here, and it is a bigger finding than
-anything the decomposition would have produced.
+```powershell
+uv run python scripts/eval_classifier.py round6-payment-probe --samples 5
+```
+
+Stage 1 is deterministic and still runs once, so anything that varies came from
+the model. Each case reports `[refused/total]`, non-unanimous cases are marked
+`UNSTABLE` and listed, and the run ends with the only number that licenses a
+comparison:
+
+```
+  5 samples per case.  unstable: 9/10 (90%)
+  A difference of fewer than 9 cases between two configurations is inside
+  this corpus's own disagreement with itself. Do not attribute a mechanism to it.
+```
+
+The scoring verdict is the **majority** across samples, not "refuse if any sample
+refused". The question a corpus answers is what a single production call
+typically does, and a max-over-samples rule would report the behaviour of a
+system nobody is running. Ties break toward refusal.
+
+At `--samples 1` — still the default, because it is free and correct for a first
+look — the run says so and says what it cannot support:
+
+```
+  1 sample per case. This number has no error bar, so it cannot support
+  a comparison between configurations.
+```
+
+**None of the numbers already in this file have been re-measured this way.** They
+stand as single-sample readings, which is what they were when taken, and the
+corpora that produced most of them are spent. Round 7 is the first that can be
+measured properly.
 
 ### Logged defects, not fixed
 
