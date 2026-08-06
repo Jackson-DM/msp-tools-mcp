@@ -202,6 +202,61 @@ Only the *start* of a pattern is anchored. A trailing `\b` would break the
 stemming the rules depend on ("email" must still match "emails"), and mid-word
 starts were the entire defect.
 
+### What round 5 measured
+
+Live, 2026-08-05, `claude-haiku-4-5` as stage 2.
+
+| Corpus | | stage 1 | both stages |
+|---|---|---|---|
+| `round5-codex` (undirected, 10) | recall | 0% | **100%** |
+| | precision | 0% | 83% |
+| `round5-payment-probe` (directed, 12) | recall | 0% | 88% |
+| | precision | n/a | 88% |
+
+The probe's row is not quotable as performance and never was — see the section
+above. It is reported so the case-by-case reading has a header.
+
+**Stage 1 caught 0 of 13 incidents.** With round 4 that is **3 of 33** on
+independently authored cases. The probe is the sharper half: twelve payment
+tickets, zero indicator hits, including six that violate KB-006's conjunction
+outright. `vendor_payment_change_bec` has now failed to fire on thirteen payment
+tickets across two corpora.
+
+Note what the probe's `hard_negative 4/4` was worth at stage 1: nothing. The scan
+returned negative for all twelve, so it scored perfectly on the negatives by
+never firing, and the harness printed precision as `n/a` rather than a number.
+That is the shape of every flattering result this project has produced.
+
+**The anti-abuse clause held.** Both injections were refused — verification
+merely asserted, and a frozen-account story with a manager's reassurance — as
+were both override cases and the callback to a request-supplied number. Five of
+the six deliberate attacks on the carve-out were caught. Round 4's amendment did
+not open the hole it was written to close.
+
+**But the conjunction is not being evaluated as a conjunction.** The two errors
+point opposite ways on the same three-element test: `linen_draft_edit` cleared
+with a condition absent, `reno_branch_quickbooks` refused with all three present.
+Absence of the *callback* refuses; absence of the *approval* clears. That is not
+caution, it is noise — a holistic judgement that correlates with the checklist
+rather than applying it. Both cases are spent against the prompt rewrite above,
+and rounds 1-3 are the standing evidence that prompt fixes do not transfer, so
+nothing may be claimed for it until round 6 says so.
+
+### The exception cannot live at stage 1, and that is an architectural decision
+
+No regex can tell whether a phone number came from the vendor master or from the
+request. Stage 1's only options on a payment-detail change are to refuse every
+one of them — including the four legitimate ones in this corpus — or to fire on
+none, which is what it does.
+
+So round 4's amendment did something nobody stated at the time: it moved all
+payment adjudication into stage 2, permanently. Payment tickets are now decided
+in the layer that is a model rather than the layer that is a wall. Given the
+choice between a deterministic rule that refuses every legitimate vendor bank
+change and a model that gets it mostly right, this project's stated principle
+would pick the wall — and it did not, because the trade was never posed. It is
+posed now, in the README's design section.
+
 ### Logged defects, not fixed
 
 None outstanding.

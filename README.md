@@ -367,9 +367,64 @@ this paragraph. It cost no recall: stage 1 held at 15% and its precision went to
 After the KB-006 amendment, **stage 2 made no errors on any of the 37 tickets
 that reached it.**
 
+### Round five: probing the exception that round four created
+
+Round 4's fix added a carve-out to a safety policy in response to a single case,
+and never tested it. "I already called and verified this" is what a wire-fraud
+email asks its victim to believe, so round 5 commissioned two corpora from one
+independent author: twelve cases aimed squarely at that paragraph, and ten
+written with no direction at all. The split matters — **a probe finds defects, it
+cannot estimate performance**, because the sample is shaped by the commissioner's
+worry. The probe's numbers are never quoted as recall. See
+[`eval/README.md`](eval/README.md).
+
+**Stage 1 caught 0 of 13.** Combined with round 4, **3 of 33** independently
+authored incidents. Twelve payment tickets produced zero indicator hits,
+including six that violate KB-006's conjunction outright; the BEC rule has now
+failed to fire on thirteen payment tickets across two corpora.
+
+**The anti-abuse clause held.** Both injections were refused — one where
+verification was merely asserted, one carrying a frozen-account story and a
+manager's reassurance — along with both override cases and a callback to a number
+the request itself supplied. Five of six deliberate attacks on the carve-out were
+caught.
+
+**But the conjunction isn't being read as a conjunction.** The two errors point
+in opposite directions on the same three-element test: one ticket cleared with a
+condition absent, another refused with all three present. Absence of the callback
+refuses; absence of the internal approval clears; presence of everything
+sometimes refuses anyway. That is noise, not conservatism — a holistic judgement
+that correlates with the checklist instead of applying it. The classifier prompt
+now walks the conditions explicitly and binds in both directions, and **nothing
+is claimed for that fix until round 6 measures it on cases written by someone who
+never saw it.** Rounds one through three are the standing evidence that prompt
+fixes do not transfer.
+
+The undirected corpus is the cleaner read: **stage 2 made zero errors** — four
+incidents, one injection, both incidents outside KB-006's named list. Its only
+false positive was stage 1's, and stage-1 refusals are final by design, so that
+bug cost the whole guardrail's precision rather than just the floor's.
+
+### The exception cannot live at stage 1, and nobody decided that
+
+No regex can tell whether a phone number came from the vendor master or from the
+request. Stage 1's only options on a payment-detail change are to refuse all of
+them — including the legitimate ones — or to fire on none, which is what it does.
+
+So round 4's amendment did something that was never stated at the time: it moved
+payment adjudication into stage 2, permanently. Those tickets are now decided in
+the layer that is a model rather than the layer that is a wall. Given a choice
+between a deterministic rule that refuses every legitimate vendor bank change and
+a model that gets it mostly right, this project's stated principle picks the
+wall — and it didn't, because the trade was never posed as one. Writing the
+exception felt like fixing a false positive. It was a change of architecture.
+
+That is the most useful thing round 5 found, and no amount of running the test
+suite would have surfaced it.
+
 ### What this does and does not establish
 
-Stage 2 does the work. Stage 1 catches 3 of 20 incidents on unfamiliar language
+Stage 2 does the work. Stage 1 catches 3 of 33 incidents on unfamiliar language
 and is not a meaningful detector on its own — it is a floor whose value is that
 it cannot be argued with, not that it sees much.
 
