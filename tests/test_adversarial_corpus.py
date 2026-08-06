@@ -27,6 +27,8 @@ do not understand — not an attacker gaming a regex.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from msp_tools import security
@@ -272,6 +274,40 @@ def test_every_pattern_is_anchored() -> None:
     assert not offenders, (
         "unanchored pattern(s) — prefix each with \\b so it cannot match "
         "mid-word:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_no_pattern_has_a_gap_that_can_cross_a_clause() -> None:
+    """A variable-length gap must not span a subordinating conjunction.
+
+    Round 5's false positive — "clicked Forgot Password four times BECAUSE the
+    first messages were slow" — was proximity standing in for the object
+    relation. `_same_clause()` fixes that, but nothing stopped the next pattern
+    from being written with a bare `[^.]{0,60}` gap and reopening it, and six
+    such gaps were still in the table when the first one was fixed.
+
+    So the rule is enforced rather than remembered, exactly as with anchoring.
+    This is the third fix for the wrong-object fault and the second one written
+    as a property of the whole table instead of a repair to the instance found;
+    the first two were repairs, and a fresh corpus reopened the fault both times.
+    """
+    bare_gap = re.compile(r"\[\^\.\]\{")
+    offenders: list[str] = []
+
+    for indicator in security.INDICATORS:
+        patterns = (
+            list(indicator.any_of)
+            + [p for group in indicator.all_of for p in group]
+            + list(indicator.unless_any)
+        )
+        for pattern in patterns:
+            if bare_gap.search(pattern):
+                offenders.append(f"{indicator.id}: {pattern!r}")
+
+    assert not offenders, (
+        "pattern(s) with an unrestricted gap — wrap the gap in "
+        "security._same_clause(n) so it cannot reach across a clause "
+        "boundary:\n  " + "\n  ".join(offenders)
     )
 
 

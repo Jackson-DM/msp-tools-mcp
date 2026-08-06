@@ -102,8 +102,6 @@ class Indicator:
 
 # Reusable fragments -------------------------------------------------------
 
-# The object must be a message or its payload. Bare "clicked" is not enough:
-# people click icons, buttons, and links inside your own product all day.
 # A gap that cannot cross into another clause.
 #
 # Round 5 (fault 2 again, third sighting). "I clicked Forgot Password four times
@@ -129,6 +127,8 @@ def _same_clause(n: int) -> str:
     return rf"(?:(?!\b(?:{_CLAUSE_BREAK})\b)[^.]){{0,{n}}}?"
 
 
+# The object must be a message or its payload. Bare "clicked" is not enough:
+# people click icons, buttons, and links inside your own product all day.
 _MESSAGE_OBJECT = (
     r"\battachment\b",
     r"\battached\b",
@@ -177,7 +177,7 @@ INDICATORS: tuple[Indicator, ...] = (
             r"\bdecrypt(?:ed|ion)?\b",
             r"\bbitcoin\b",
             r"\bcrypto(?:currency)?\b",
-            r"\b(?:pay|send)\b[^.]{0,30}?\b(?:to (?:get|recover|unlock)|for the key)",
+            r"\b(?:pay|send)\b" + _same_clause(30) + r"\b(?:to (?:get|recover|unlock)|for the key)",
             r"\bget the key",
             r"\bfiles? (?:are|were|got|have been) (?:encrypted|locked)",
         ),
@@ -333,9 +333,9 @@ INDICATORS: tuple[Indicator, ...] = (
             (
                 # `\bask` on both sides: unanchored it matched inside "task",
                 # so "the vendor emailed about the invoice task" was a wire fraud.
-                r"\b(?:emailed|e-?mail|message|contacted|called)[^.]{0,40}?\bask",
-                r"\bask(?:ing|ed)[^.]{0,40}?\b(?:update|change|send|pay|go to)",
-                r"\b(?:we|they) (?:got|received)[^.]{0,30}?(?:an? )?e-?mail",
+                r"\b(?:emailed|e-?mail|message|contacted|called)" + _same_clause(40) + r"\bask",
+                r"\bask(?:ing|ed)" + _same_clause(40) + r"\b(?:update|change|send|pay|go to)",
+                r"\b(?:we|they) (?:got|received)" + _same_clause(30) + r"(?:an? )?e-?mail",
                 r"\brequest(?:ing|ed) (?:that |we |us )?(?:update|change|pay)",
                 r"\bthey say",
                 r"\binstructions for",
@@ -378,8 +378,9 @@ INDICATORS: tuple[Indicator, ...] = (
             # email" is a delivery fault, not impersonation.
             (
                 r"\b(?:customers?|clients?|recipients?|people|someone|vendors?)"
-                r"[^.]{0,40}?\b(?:received|got|getting|called|reported)",
-                r"\breceived[^.]{0,30}?\bfrom (?:us|our)",
+                + _same_clause(40)
+                + r"\b(?:received|got|getting|called|reported)",
+                r"\breceived" + _same_clause(30) + r"\bfrom (?:us|our)",
                 r"\bemails? from us",
             ),
             (
