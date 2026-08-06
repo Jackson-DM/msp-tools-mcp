@@ -291,7 +291,13 @@ def test_no_pattern_has_a_gap_that_can_cross_a_clause() -> None:
     as a property of the whole table instead of a repair to the instance found;
     the first two were repairs, and a fresh corpus reopened the fault both times.
     """
-    bare_gap = re.compile(r"\[\^\.\]\{")
+    # Every quantifier, not just the braced one this file happens to use today.
+    # `[^.]{0,60}` was the spelling that caused the defect, but `[^.]*` and
+    # `[^.]+` are the same unrestricted gap, and a guard that catches one
+    # spelling of a fault is the instance-repair this test exists to replace.
+    # `_same_clause()`'s own output is not caught: its `[^.]` is followed by a
+    # closing paren, the quantifier sitting outside the tempered group.
+    bare_gap = re.compile(r"\[\^\.\]\s*[{*+]")
     offenders: list[str] = []
 
     for indicator in security.INDICATORS:
