@@ -413,6 +413,16 @@ refused". The question a corpus answers is what a single production call
 typically does, and a max-over-samples rule would report the behaviour of a
 system nobody is running. Ties break toward refusal.
 
+**Even values of `--samples` are rejected.** That tie rule is right for the
+guardrail and wrong for an estimator of the guardrail: at N=4 a coin-flip case
+scores refused 68.75% of the time against 50% at N=5, an 18.75-point bias landing
+entirely on the unstable cases the flag exists to surface, and still +13.7 points
+at N=8. Odd N is exactly unbiased. A policy asymmetry and a measurement are
+different objects, and importing the first into the second is measurement error
+wearing caution's clothes — which is the failure this directory exists to catch.
+Enforced rather than documented, because "always compare at matching parity" is
+the kind of unwritten invariant this repo keeps a ledger of breaking.
+
 At `--samples 1` — still the default, because it is free and correct for a first
 look — the run says so and says what it cannot support:
 

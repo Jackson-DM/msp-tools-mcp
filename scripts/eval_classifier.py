@@ -197,6 +197,23 @@ def main() -> None:
     )
     args = ap.parse_args()
 
+    # Odd samples only. Ties break toward refusal, which is correct for the
+    # guardrail and wrong for a thing measuring it: at N=4 a coin-flip case
+    # scores refused 68.75% of the time against 50% at N=5, an 18.75-point bias
+    # landing entirely on unstable cases — the ones this flag exists to surface.
+    # Odd N is exactly unbiased. Rejected rather than documented because
+    # "compare at matching parity" is an unenforced invariant, and this repo's
+    # record with those is poor enough to have its own ledger.
+    if args.samples < 1 or args.samples % 2 == 0:
+        print(
+            f"error: --samples must be odd and at least 1 (got {args.samples}).\n"
+            "  Ties break toward refusal, so an even N reports more refusals than\n"
+            "  the system produces — +18.75 points at N=4 on a coin-flip case, and\n"
+            "  still +13.7 at N=8. Odd N is unbiased. Use 3, 5, 7 or 9.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
     if args.list or not args.corpus:
         # Print the qualifying count, not just a LEAKED marker. Two different
         # things were both being called leakage: per-case `leaked`, which
