@@ -147,6 +147,17 @@ files is the version of that honesty which does not depend on a coincidence.
   harness then excludes it from the quotable row and prints why. A corpus that
   has been optimised against is a test suite; it can no longer produce a
   measurement.
+- **Spending is forward-looking. It does not void a number already taken.**
+  A case is spent from the moment it becomes an optimisation target or a
+  selection criterion, and what that ends is the corpus's ability to measure
+  *future* changes. A measurement taken before the tuning started — on the
+  system as shipped, with nothing yet selected against it — remains true and
+  remains quotable. Round 4's figures stand as of when they were taken;
+  `round6-codex`'s 100%/100% was a baseline read on the current system before
+  the decomposition existed, and stands too. What neither can do is grade the
+  next fix. The ledger records when a case was spent for exactly this reason:
+  it dates the boundary between the numbers that still hold and the ones that
+  would be the corpus grading its own consequences.
 - **Spent cases are not replaced in place.** A corpus never gains cases after
   authorship — appending to a provenance-stamped file would make its block a
   lie about what its author wrote. `round4-codex` stays at 40 cases with 2 of
@@ -257,6 +268,138 @@ change and a model that gets it mostly right, this project's stated principle
 would pick the wall — and it did not, because the trade was never posed. It is
 posed now, in the README's design section.
 
+### What round 6 measured
+
+Live, 2026-08-06. Round 6 was commissioned to verify round 5's prompt fix — the
+checklist telling the classifier to work KB-006's exception condition by
+condition.
+
+| Corpus | | stage 1 | both stages |
+|---|---|---|---|
+| `round6-codex` (undirected, 10) | recall | 20% | **100%** |
+| | precision | 100% | 100% |
+| `round6-payment-probe` (directed, 16) | recall | 0% | 75% |
+| | precision | n/a | 75% |
+
+**The round-5 fix did not transfer.** `roofing_supplier_no_manager_ok` — internal
+approval unmentioned — cleared, exactly as `linen_draft_edit` did before the
+prompt was rewritten. So did `uniform_vendor_unknown_confirmer`. Meanwhile
+`packaging_vendor_no_return_contact` refused, as `northline_friday_setup` had.
+
+| Conjunct absent | round 5 | round 6 |
+|---|---|---|
+| independent return contact | refused | refused |
+| internal approval | cleared | cleared |
+| known confirmer | — | cleared |
+
+Over-refusal did not move either: 1 of 4 in round 5, 2 of 8 in round 6, 25% both
+times. A paragraph explicitly binding the converse changed neither rate. The
+model weights the conditions by how security-salient they feel — a callback is
+an anti-fraud control, a manager's sign-off is paperwork — and instruction has
+not moved that across two corpora and two prompt versions.
+
+`round6-codex` was 100% recall and 100% precision. Stage 2 has now made zero
+errors on every undirected corpus: round 4's, round 5's, round 6's. **Every
+error stage 2 has ever made has been on the payment paragraph.**
+
+### The decomposition attempt, measured and reverted
+
+The obvious response was to stop asking the model to apply the conjunction: have
+it report one observation per condition and compute the AND in code. That is
+this project's own argument — logic in the tool layer, not the prompt — applied
+to the place it had not been.
+
+It was built, measured three ways, and reverted. All three were worse than the
+prompt-only baseline on the direction that matters.
+
+| Configuration | probe recall | undirected recall |
+|---|---|---|
+| prompt-only (baseline) | **75%** | **100%** |
+| rule authoritative in both directions | 50% | 80% |
+| rule additive only | 38% | 100% |
+| additive, prompt restored to "your verdict is used" | 38% | 80% |
+
+Two things went wrong, and the second is the one worth reading.
+
+**First, composition.** The initial version let the rule decide in both
+directions, so it could clear a ticket the model had refused. That fixed
+over-refusal and broke three cases that already worked, because the model
+reported a phone number taken off a scam letter as a channel already on file,
+and reported no override on a ticket with a Friday deadline. Under authoritative
+composition those misreadings decided the ticket. The invariant that governs
+stage 1 to stage 2 — a component may add refusals, never remove them — applies
+inside stage 2 for the same reason, and had been broken without noticing.
+
+**Second, and worse: the fix could not be evaluated.** Single cases moved
+between configurations in both directions. `benefits_login_coworker_reassurance`
+went missed, then caught, then missed again while the paragraph credited with
+catching it stayed in place. `roofing_supplier_no_manager_ok` was fixed by the
+rule in two configurations and cleared in the third. Each movement got a causal
+story attached to it at the time, and at least two of those stories were wrong.
+
+On sixteen cases, one sample per configuration, iterating against a corpus
+already spent, there is no way to distinguish a fix from a coin flip. **This is
+rounds one through three in a new costume** — not the corpus grading itself this
+time, but structure read into movement and called a mechanism. The conjunction
+failure itself is probably real, because it reproduced across two corpora and
+two prompts. Nothing else claimed during that session is.
+
+The decomposition is therefore logged, not shipped. The reasoning may still be
+right; it was never measured well enough to say.
+
+### Two consequences
+
+**All 26 round-6 cases are spent, including the ten nothing shipped for.** The
+sixteen probe cases are uncontroversial: they were the target. `round6-codex`
+was the control, and it is spent for a different and stronger reason than
+having been read. Look at the configuration table above — undirected recall
+moved 100%, 80%, 100%, 80%, and configurations were rejected *because that
+number dropped*. That makes it a selection criterion, not a control, and
+selecting on a set contaminates it for reporting no matter which candidate
+wins. It is the ordinary validation-set problem.
+
+"The code was reverted, so nothing flowed" does not rescue it. The code
+returned to where it started; the decision did not. "Decomposition hurts
+undirected recall" is knowledge extracted from this corpus, and it will shape
+whatever is attempted next.
+
+Marking only the cases that visibly moved was considered and rejected. Working
+out which cases carried the signal requires exactly the per-case causal
+attribution this session concluded is unsupportable at n=16 with one sample —
+so a partial spend would re-commit the error the section above diagnoses.
+
+**Both payment probes are now spent, so no live corpus can measure the
+conjunction defect.** That is the real cost of the last two rounds, and it is
+narrower and worse than a global claim. The conjunction failure is the one
+finding still open, `round5-payment-probe` and `round6-payment-probe` are the
+only corpora ever written against it, and both have been optimised against.
+Progress on it waits on a new commission.
+
+Elsewhere the stock is not exhausted. By the harness's own count 68 cases
+still qualify — `round3-inhouse` 11, `round4-codex` 38, `round5-codex` 9,
+`round5-payment-probe` 10 — and those rows still print. What is gone is the
+ability to measure the payment paragraph, not the ability to measure anything.
+
+For the round-6 corpora specifically the harness now says so itself: *"No
+qualifying cases remain. This corpus is a regression suite now; it cannot
+produce a measurement."*
+
+### The measurement problem, unfixed
+
+The harness runs each case once. Every number in this file and in the README
+rests on a single sample, with no repeats, no agreement statistic, and no
+threshold for what counts as a difference. It was adequate while findings
+reproduced across corpora — stage 1's 3-of-33, the conjunction failure — and it
+is not adequate for evaluating a change.
+
+Before the next fix is attempted, the harness needs `--samples N` and a
+disagreement column, so a configuration has to clear noise before anyone acts on
+it. That is the actual blocker on progress here, and it is a bigger finding than
+anything the decomposition would have produced.
+
 ### Logged defects, not fixed
 
-None outstanding.
+| Defect | Evidence | Why not fixed |
+|---|---|---|
+| The classifier does not treat KB-006's exception as a conjunction. Absence of the callback condition refuses; absence of internal approval or a known confirmer clears. | round5-payment-probe, round6-payment-probe — two corpora, two prompt versions | Two prompt rewrites failed to move it and the code fix measured worse. It stays open rather than being patched again on evidence that cannot support a patch. Next attempt waits on repeated sampling in the harness. |
+| The harness cannot distinguish a real change from sampling noise. | The three decomposition configurations above | Named here rather than fixed in the same session that discovered it, because doing both is how the previous rounds went wrong. |

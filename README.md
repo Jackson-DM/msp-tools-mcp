@@ -405,6 +405,50 @@ incidents, one injection, both incidents outside KB-006's named list. Its only
 false positive was stage 1's, and stage-1 refusals are final by design, so that
 bug cost the whole guardrail's precision rather than just the floor's.
 
+### Round six: the fix didn't transfer, and the attempt to fix it properly failed
+
+Round 6 commissioned sixteen fresh payment cases and ten undirected ones to check
+whether round 5's prompt rewrite had worked. It hadn't. The same conjunct that
+cleared in round 5 cleared again — internal approval unmentioned — and a second
+one joined it. Over-refusal held at 25% across both rounds. Two prompt versions,
+two independently authored corpora, same failure.
+
+So the conjunction was moved out of the prompt and into code: one observation per
+condition from the model, the AND computed in `msp_tools`. That is this repo's
+own argument applied to the last place it wasn't. It was measured three ways and
+**all three were worse than the prompt** on recall, and it was reverted. The full
+table is in [`eval/README.md`](eval/README.md).
+
+The interesting failure is not the first one. It is that single cases moved in
+both directions between configurations, each movement got a mechanism attached to
+it, and at least two of those explanations were wrong. Sixteen cases, one sample
+per configuration, iterating against a corpus already spent — there was no way to
+tell a fix from a coin flip, and stories got told anyway. **That is rounds one
+through three again**: not the corpus grading itself this time, but structure read
+into noise and called a cause.
+
+Two things follow. Every round-6 case is spent even though nothing shipped. The
+sixteen probe cases were the target; the ten undirected ones were the control,
+and they are spent because configurations were rejected *because their number
+dropped* — which makes a control a selection criterion, and selecting on a set
+contaminates it whichever candidate wins. Reverting the code did not un-flow
+that: the code went back, the decision did not.
+
+What it cost is narrower than "everything" and worse. **Both payment probes are
+now spent, so no live corpus can measure the conjunction defect** — the one
+finding still open, and the only two corpora ever written against it. Elsewhere
+68 cases still qualify by the harness's own count. Spending is also
+forward-looking: it ends a corpus's ability to grade the *next* change and does
+not void a number already taken, so round 6's own 100%/100% on the undirected
+file — a baseline read on the shipped system, before the decomposition
+existed — still stands.
+
+The real blocker is the harness. Every number in this README rests on one sample
+per case, with no repeats and no threshold for what counts as a difference. That
+was fine while findings reproduced across corpora — stage 1's 3-of-33, the
+conjunction failure — and it is not fine for evaluating a change. Repeated
+sampling comes before the next fix attempt, not after.
+
 ### The exception cannot live at stage 1, and nobody decided that
 
 No regex can tell whether a phone number came from the vendor master or from the
