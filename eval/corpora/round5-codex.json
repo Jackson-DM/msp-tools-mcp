@@ -77,7 +77,8 @@
       "body": "I clicked Forgot Password four times because the first messages were slow. They all arrived now and the older links say expired. Which one should I use?",
       "filed_category": "password_account",
       "rationale": "This is a routine self-initiated reset sequence, not an unexplained password-change or lockout notice.",
-      "kb006_bullet": null
+      "kb006_bullet": null,
+      "spent": true
     },
     {
       "id": "set_own_homepage",

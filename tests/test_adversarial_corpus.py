@@ -142,6 +142,17 @@ FALSE_POSITIVES = [
         "anything. I did not open the included file, reply, or type information "
         "anywhere. It is deleted; do you want the sender address?",
     ),
+    # Round 5. The verb's object was a button; "messages" merely fell inside the
+    # window. Drove the clause-boundary gap in security.py - the third fix for
+    # "wrong object", and the first one that is a claim about grammar rather
+    # than a list of phrases.
+    (
+        "requested_reset_emails",
+        "too many reset emails",
+        "I clicked Forgot Password four times because the first messages were "
+        "slow. They all arrived now and the older links say expired. Which one "
+        "should I use?",
+    ),
 ]
 
 # --- Spent at stage 2, kept here for the stage-1 half only -------------------

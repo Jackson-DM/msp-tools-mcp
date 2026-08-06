@@ -104,17 +104,43 @@ class Indicator:
 
 # The object must be a message or its payload. Bare "clicked" is not enough:
 # people click icons, buttons, and links inside your own product all day.
+# A gap that cannot cross into another clause.
+#
+# Round 5 (fault 2 again, third sighting). "I clicked Forgot Password four times
+# because the first messages were slow" refused a routine ticket: the verb's
+# object was a BUTTON, and "messages" merely happened to fall inside the
+# sixty-character window. Proximity had been standing in for the object
+# relation, which works until a subordinate clause supplies a second noun.
+#
+# So the gap now refuses to span a clause boundary. "clicked the link in the
+# email" and "double-clicked the spreadsheet in yesterday's delivery email" are
+# one clause and still match; anything reached only by crossing a "because",
+# "when", "after" no longer does. This is a claim about grammar rather than a
+# list of phrases, which is the point - the previous two fixes for this fault
+# each closed one route and left the next one open.
+_CLAUSE_BREAK = (
+    r"because|since|when|after|before|so that|but|while|although|unless|if"
+    r"|though|whereas|until"
+)
+
+
+def _same_clause(n: int) -> str:
+    """Up to `n` characters that stay inside the current clause."""
+    return rf"(?:(?!\b(?:{_CLAUSE_BREAK})\b)[^.]){{0,{n}}}?"
+
+
 _MESSAGE_OBJECT = (
     r"\battachment\b",
     r"\battached\b",
     # `\bran` matters here specifically: unanchored, it matched inside "strange".
-    r"\b(?:clicked|opened|double-?clicked|ran|downloaded)[^.]{0,60}?"
-    r"\b(?:e-?mail|message|attachment|link|invite)",
+    r"\b(?:clicked|opened|double-?clicked|ran|downloaded)" + _same_clause(60)
+    + r"\b(?:e-?mail|message|attachment|link|invite)",
     # `\b(?:from|in)\b` needs BOTH sides: "in" otherwise matches inside
     # "information", so "the document with the pricing information in my email"
     # satisfied a rule about attachments.
-    r"\b(?:link|file|invoice|notice|document)[^.]{0,30}?\b(?:from|in)\b"
-    r"[^.]{0,30}?\b(?:e-?mail|message)",
+    r"\b(?:link|file|invoice|notice|document)" + _same_clause(30)
+    + r"\b(?:from|in)\b" + _same_clause(30)
+    + r"\b(?:e-?mail|message)",
 )
 
 # Any change in system behaviour, per KB-006's "ANY change".
