@@ -9,6 +9,8 @@ eval/
   corpora/*.json         corpora, each carrying its own provenance block
   handoff/               the machinery for commissioning one
   handoff/briefs/        one brief per round, kept rather than overwritten
+  handoff/reports/       the corpus author's own report, per round
+  handoff/reviews/       independent review of the repo, and the reports back
 ```
 
 Briefs are kept per round because a corpus is a claim about who wrote it, and
@@ -436,9 +438,51 @@ stand as single-sample readings, which is what they were when taken, and the
 corpora that produced most of them are spent. Round 7 is the first that can be
 measured properly.
 
+### The round-6 review, and the fix that had been a regression
+
+Rounds 5 and 6 changed code, a policy and a prompt twice, and ended
+byte-identical to round 4. What survived was the reasoning, and nobody outside
+had read it. `handoff/reviews/round6.md` commissioned that read in two passes —
+code, then claims — in separate sessions, so the code findings could not colour
+the reading of the write-ups.
+
+The pass-1 finding that matters is not on anyone's list above. **Round 5's clause
+fix introduced a false negative in the deterministic floor.** `_CLAUSE_BREAK`
+matches tokens rather than grammatical roles, and `\b` treats a hyphen as a word
+boundary, so `\bafter\b` fired inside the adjective "after-hours". The gap
+stopped early and the indicator was suppressed:
+
+```
+"I clicked the after-hours email link. Right after that the laptop became slow."
+"We got an after-hours email from our vendor with new bank account details."
+```
+
+Both are ordinary KB-006 situations. Both cleared stage 1. Swap "overnight" for
+"after-hours" and both refuse. Stage 2 may well have caught them, but stage 2 is
+optional and stage 1 is the layer whose entire claimed value is that it cannot be
+argued with — and it could be, by a hyphen.
+
+This is the first change in this repo's history to move the guardrail in the
+dangerous direction, and it arrived as the fix for a false positive. It is now
+fixed: the gap's boundary is `(?<![\w-])...(?![\w-])` instead of `\b`, and
+`test_no_clause_break_word_suppresses_an_indicator_when_hyphenated` walks the
+whole table rather than pinning the two tickets that were found.
+
+**What the corpora could say about it: nothing.** Stage 1 is deterministic, so a
+before/after over all six corpora is free, and it moved not one verdict of 88.
+That is not evidence the fix is good. None of those corpora contains the shape,
+which is why the defect survived four rounds of them — and it is the same reason
+the round-2 suite went 14-for-14 and transferred nothing. A free run that cannot
+move is not a measurement. It is recorded here so that nobody later reads "no
+regression across six corpora" as though it were one.
+
 ### Logged defects, not fixed
 
 | Defect | Evidence | Why not fixed |
 |---|---|---|
 | The classifier does not treat KB-006's exception as a conjunction. Absence of the callback condition refuses; absence of internal approval or a known confirmer clears. | round5-payment-probe, round6-payment-probe — two corpora, two prompt versions | Two prompt rewrites failed to move it and the code fix measured worse. It stays open rather than being patched again on evidence that cannot support a patch. Next attempt waits on repeated sampling in the harness. |
 | The harness cannot distinguish a real change from sampling noise. | The three decomposition configurations above | Named here rather than fixed in the same session that discovered it, because doing both is how the previous rounds went wrong. |
+| `_CLAUSE_BREAK` holds thirteen SUBORDINATING conjunctions. Coordinators and discourse markers are absent, so round 5's false positive returns verbatim with "and", ", then", "as", ":", "?", "!" or a bare ";" in place of "because". `_same_clause` also treats "after", "before", "while" and "since" as clause breaks when they are prepositions. | Round 6 review, pass 1, reproduced | Widening the list is exactly what produced the false negative fixed above, and this is the third repair of the wrong-object fault to be announced as a rule and turn out to be an instance. No corpus that exists contains either shape, so a fix could not be told from a coin flip. Waits on round 7's measurement design. |
+| Both "class rule" guards are source-spelling lints, not the semantic properties their docstrings name. `test_every_pattern_is_anchored` passes `r"\bfoo\|ran"`, whose second branch starts mid-word. The gap guard recognises `[^.]{0,60}` and misses `.{0,60}`, `[\s\S]{0,60}`, `[^!]{0,60}`. | Round 6 review, pass 1, by mutation | The tests keep regression value for the encodings they do recognise. Strengthening them is cheap and is not the reason they failed — the write-ups claimed a class was closed on the strength of a lint, and that claim is the defect. Fix the claim first; see the README's round-4 and round-5 sections. |
+| `\bran` matches the prefix of `range`, `randomly`, `ransacked`. "Can you check the price range in the email from Denise? The report is slow to load" is refused. | Round 6 review, pass 1, reproduced | Start-only anchoring was taken to preserve stemming, and its false-positive cost was never recorded anywhere. It is recorded now. `ran` is a complete lexeme rather than a stem and could carry a trailing boundary, but a one-alternative edit is the instance repair this file keeps logging; it goes in with the clause work, measured. |
+| No bound on ticket length before `scan`. Roughly linear, ~0.9s for 1 MB — no catastrophic backtracking found. | Round 6 review, pass 1, timed | Availability, not classification, and the synthetic store makes it unreachable today. Real once a live adapter exists. |

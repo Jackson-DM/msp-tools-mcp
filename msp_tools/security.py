@@ -113,9 +113,27 @@ class Indicator:
 # So the gap now refuses to span a clause boundary. "clicked the link in the
 # email" and "double-clicked the spreadsheet in yesterday's delivery email" are
 # one clause and still match; anything reached only by crossing a "because",
-# "when", "after" no longer does. This is a claim about grammar rather than a
-# list of phrases, which is the point - the previous two fixes for this fault
-# each closed one route and left the next one open.
+# "when", "after" no longer does.
+#
+# ROUND 6 CORRECTION. That paragraph used to end "this is a claim about grammar
+# rather than a list of phrases." It is not. This is a list of phrases, and the
+# independent review broke it in both directions:
+#
+#   FALSE NEGATIVE (fixed, see _same_clause) - the list matches tokens, not
+#   grammatical roles, so `\bafter\b` fired inside the adjective "after-hours"
+#   and suppressed a genuine incident. Growing the list makes this worse.
+#
+#   FALSE POSITIVE (open, deliberately unfixed) - the list holds thirteen
+#   SUBORDINATING conjunctions. Coordinators and discourse markers are absent,
+#   so the round-5 false positive returns verbatim with "and", ", then", "as",
+#   or a bare ";" in place of "because". `_same_clause` also treats "after",
+#   "before", "while" and "since" as clause breaks when they are prepositions.
+#
+# The false positive is left open on purpose. Widening the list is what caused
+# the false negative, this is the third repair of the wrong-object fault to be
+# announced as a rule and turn out to be an instance, and no corpus that exists
+# contains either shape - so a fix here could not be told from a coin flip.
+# It is logged in eval/README.md and waits on round 7's measurement design.
 _CLAUSE_BREAK = (
     r"because|since|when|after|before|so that|but|while|although|unless|if"
     r"|though|whereas|until"
@@ -123,8 +141,25 @@ _CLAUSE_BREAK = (
 
 
 def _same_clause(n: int) -> str:
-    """Up to `n` characters that stay inside the current clause."""
-    return rf"(?:(?!\b(?:{_CLAUSE_BREAK})\b)[^.]){{0,{n}}}?"
+    r"""Up to `n` characters that stay inside the current clause.
+
+    The boundary is `(?<![\w-])...(?![\w-])` rather than `\b`. `\b` treats a
+    hyphen as a word boundary, so `\bafter\b` fires inside the ADJECTIVE
+    "after-hours" — and a gap that thinks it hit a clause break stops early,
+    which suppresses the indicator. Round 6's independent review found:
+
+        "I clicked the after-hours email link. Right after that the laptop
+         became slow."                                          -> cleared
+        "I clicked the overnight email link. Right after that the laptop
+         became slow."                                          -> refused
+
+    Same for a vendor bank-detail change. One word apart, opposite verdict,
+    and the wrong one clears. That is a false NEGATIVE in the deterministic
+    floor, introduced by the fix for a false positive — the first time a
+    change in this file has moved the guardrail in the dangerous direction.
+    "before-tax" and "while-you-wait" carry it too.
+    """
+    return rf"(?:(?!(?<![\w-])(?:{_CLAUSE_BREAK})(?![\w-]))[^.]){{0,{n}}}?"
 
 
 # The object must be a message or its payload. Bare "clicked" is not enough:

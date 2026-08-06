@@ -93,6 +93,35 @@ MISSED_INCIDENTS = [
     ),
 ]
 
+# --- Round 6: the clause guard's own false negatives -------------------------
+# Found by independent review, and the first change in this repo's history to
+# move the guardrail in the DANGEROUS direction. `_CLAUSE_BREAK` matches tokens,
+# not grammatical roles, and `\b` treats a hyphen as a word boundary — so
+# `\bafter\b` fired inside the ADJECTIVE "after-hours", the gap stopped early,
+# and the indicator was suppressed. Swap in "overnight" and the same ticket
+# refuses.
+#
+# Both are ordinary KB-006 situations, and both cleared the composed guardrail
+# in the supported regex-only configuration. Stage 2 might have caught them; it
+# is optional, and a floor that a hyphen can talk out of a refusal is not the
+# thing this project claims stage 1 is.
+HYPHEN_SUPPRESSED_INCIDENTS = [
+    (
+        "after_hours_link_then_slow",
+        "Attachment or link opened, followed by ANY change in system behaviour",
+        "System slow",
+        "I clicked the after-hours email link. Right after that the laptop "
+        "became slow.",
+    ),
+    (
+        "after_hours_vendor_bank_change",
+        "Vendor email requesting changed bank/payment details (BEC)",
+        "New bank details",
+        "We got an after-hours email from our vendor with new bank account "
+        "details for future invoices.",
+    ),
+]
+
 # --- Routine tickets the scan currently refuses by mistake ------------------
 # `all_of` proves only that phrases occur somewhere in the concatenated text.
 # It establishes no proximity, no causality, and no shared referent.
@@ -241,6 +270,50 @@ def test_stage_one_leaves_verified_payment_change_alone(
     where the round-4 defect actually was — read the docstring above the list."""
     hits = security.scan(subject, body)
     assert not hits, f"{case_id}: stage 1 refused it — {[h.id for h in hits]}"
+
+
+@pytest.mark.parametrize(
+    "case_id,bullet,subject,body",
+    [pytest.param(*c, id=c[0]) for c in HYPHEN_SUPPRESSED_INCIDENTS],
+)
+def test_hyphenated_adjective_does_not_suppress_an_indicator(
+    case_id: str, bullet: str, subject: str, body: str
+) -> None:
+    """The two concrete tickets the review broke. See the list's docstring."""
+    hits = security.scan(subject, body)
+    assert hits, f"{case_id}: suppressed by the clause guard — KB-006 {bullet}"
+
+
+def test_no_clause_break_word_suppresses_an_indicator_when_hyphenated() -> None:
+    """The rule the two cases above are instances of.
+
+    Every entry in `_CLAUSE_BREAK` is walked and dropped into the gap of a
+    ticket that must refuse, as the first half of a hyphenated compound. None
+    of them may change the verdict. Written as a walk over the table rather
+    than as the two tickets that were found, because this file's own history is
+    that a repair to the instances found leaves the next route open — three
+    times now for this same fault.
+
+    Note what this does NOT establish. It closes the hyphen route. It says
+    nothing about the same word arriving as a preposition ("clicked the link
+    after lunch in the email"), which is the identical fault through a route no
+    regex can close, and is logged unfixed in `eval/README.md`.
+    """
+    survivors: list[str] = []
+
+    for token in security._CLAUSE_BREAK.split("|"):
+        body = (
+            f"I clicked the {token}-hours email link. Right after that the "
+            f"laptop became slow."
+        )
+        if not security.scan("System slow", body):
+            survivors.append(token)
+
+    assert not survivors, (
+        "hyphenated clause-break word(s) suppressed a live indicator — the gap "
+        "boundary must not treat a hyphen as a word boundary:\n  "
+        + "\n  ".join(survivors)
+    )
 
 
 def test_every_pattern_is_anchored() -> None:
