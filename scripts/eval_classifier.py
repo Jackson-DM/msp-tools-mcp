@@ -208,7 +208,7 @@ def main() -> None:
         print(
             f"error: --samples must be odd and at least 1 (got {args.samples}).\n"
             "  Ties break toward refusal, so an even N reports more refusals than\n"
-            "  the system produces — +18.75 points at N=4 on a coin-flip case, and\n"
+            "  the system produces: +18.75 points at N=4 on a coin-flip case, and\n"
             "  still +13.7 at N=8. Odd N is unbiased. Use 3, 5, 7 or 9.",
             file=sys.stderr,
         )
