@@ -223,17 +223,57 @@ Live, 2026-08-05, `claude-haiku-4-5` as stage 2.
 |---|---|---|---|
 | `round5-codex` (undirected, 10) | recall | 0% | **100%** |
 | | precision | 0% | 83% |
-| `round5-payment-probe` (directed, 12) | recall | 0% | 88% |
-| | precision | n/a | 88% |
+| `round5-payment-probe` (directed, 12) | caught | 0 of 8 | 7 of 8 |
+| | wrongly refused | 0 of 4 | 1 of 4 |
 
-The probe's row is not quotable as performance and never was — see the section
-above. It is reported so the case-by-case reading has a header.
+The probe's row carries counts rather than percentages, and the words "recall"
+and "precision" deliberately do not appear in it. It used to carry `recall 0% /
+88%`, with prose underneath explaining that the row was not quotable as
+performance — which is asking a caption to undo what a table says. A percentage
+under a `recall` heading *is* a performance estimate however it is captioned.
+Counts read as what they are: eight tickets, and what happened to each.
 
-**Stage 1 caught 0 of 13 incidents.** With round 4 that is **3 of 33** on
-independently authored cases. The probe is the sharper half: twelve payment
-tickets, zero indicator hits, including six that violate KB-006's conjunction
-outright. `vendor_payment_change_bec` has now failed to fire on thirteen payment
-tickets across two corpora.
+**Stage 1 caught nothing in either file.** 0 of 5 on the undirected corpus, which
+with round 4's twenty is **3 of 25** on independently authored, undirected cases.
+The probe's eight positives are reported below and are deliberately not in that
+denominator — see the correction that follows.
+
+Read case by case, the probe is the sharper half: twelve payment tickets, zero
+indicator hits, including six that violate KB-006's conjunction outright.
+`vendor_payment_change_bec` has now failed to fire on thirteen payment tickets
+across two corpora.
+
+#### The denominator this used to use, and why it was wrong
+
+This paragraph read "**3 of 33**" until round 6's review, and the public README
+promoted it twice. Thirty-three is 20 + 5 + **8**, and the eight are the directed
+payment probe — commissioned against a paragraph the commissioner chose.
+
+The rule two sections up says a directed corpus cannot estimate performance. The
+figure broke it, and independent authorship is not the repair: authorship
+controls for the detector's blind spots, and direction shapes which situations
+are sampled at all. Two different contaminations, and only one of them was
+being controlled for.
+
+Nor does the direction of the bias rescue it. Payment tickets are the seam stage
+1 structurally misses, so pooling them made the floor look *worse* — a number
+erring toward self-criticism, which is the easiest kind to leave unexamined in a
+document whose whole argument is about refusing flattering ones. The rule is
+about what the sample can estimate.
+
+The split figures are 3 of 25 undirected and 0 of 16 across both probes, and the
+conclusion is identical either way. Nothing was being propped up. That is the
+point: a figure that survives being computed correctly should be computed
+correctly.
+
+**Round 6's undirected file is not in the 25**, though it would make it 4 of 30.
+Its five positives are marked `spent`, and the reason is a distinction this
+directory has not settled: round 6 selected on a *stage-2* change, and stage 1
+neither moved nor was consulted, so it is arguable the spend never bound stage
+1's numbers. Arguable, and not being decided here — the session that wants to
+use a number is the wrong one to widen the rule that releases it. Logged as an
+open question below; it will come up again in round 7 and should be settled
+before a round needs the answer.
 
 Note what the probe's `hard_negative 4/4` was worth at stage 1: nothing. The scan
 returned negative for all twelve, so it scored perfectly on the negatives by
@@ -280,8 +320,8 @@ condition.
 |---|---|---|---|
 | `round6-codex` (undirected, 10) | recall | 20% | **100%** |
 | | precision | 100% | 100% |
-| `round6-payment-probe` (directed, 16) | recall | 0% | 75% |
-| | precision | n/a | 75% |
+| `round6-payment-probe` (directed, 16) | caught | 0 of 8 | 6 of 8 |
+| | wrongly refused | 0 of 8 | 2 of 8 |
 
 **The round-5 fix did not transfer.** `roofing_supplier_no_manager_ok` — internal
 approval unmentioned — cleared, exactly as `linen_draft_edit` did before the
@@ -314,12 +354,17 @@ to the place it had not been.
 It was built, measured three ways, and reverted. All three were worse than the
 prompt-only baseline on the direction that matters.
 
-| Configuration | probe recall | undirected recall |
+| Configuration | probe: caught of 8 | undirected: caught of 5 |
 |---|---|---|
-| prompt-only (baseline) | **75%** | **100%** |
-| rule authoritative in both directions | 50% | 80% |
-| rule additive only | 38% | 100% |
-| additive, prompt restored to "your verdict is used" | 38% | 80% |
+| prompt-only (baseline) | 6 | 5 |
+| rule authoritative in both directions | 4 | 4 |
+| rule additive only | 3 | 5 |
+| additive, prompt restored to "your verdict is used" | 3 | 4 |
+
+Counts, not percentages, and no bolded winner. These are four single-call
+session observations on twenty-one cases; a percentage under a `recall` heading
+with the best row in bold is a performance comparison, which is the one thing
+the paragraph below says these numbers cannot support.
 
 Two things went wrong, and the second is the one worth reading.
 
@@ -391,7 +436,7 @@ produce a measurement."*
 The harness used to run each case once. Every earlier number in this file and in
 the README rests on a single sample, with no repeats, no agreement statistic and
 no threshold for what counts as a difference. That was adequate while findings
-reproduced across corpora — stage 1's 3-of-33, the conjunction failure — and it
+reproduced across corpora — stage 1's floor, the conjunction failure — and it
 was not adequate for evaluating a change, which is how round 6's session produced
 three mechanisms for movements that were probably noise.
 
@@ -485,4 +530,5 @@ regression across six corpora" as though it were one.
 | `_CLAUSE_BREAK` holds thirteen SUBORDINATING conjunctions. Coordinators and discourse markers are absent, so round 5's false positive returns verbatim with "and", ", then", "as", ":", "?", "!" or a bare ";" in place of "because". `_same_clause` also treats "after", "before", "while" and "since" as clause breaks when they are prepositions. | Round 6 review, pass 1, reproduced | Widening the list is exactly what produced the false negative fixed above, and this is the third repair of the wrong-object fault to be announced as a rule and turn out to be an instance. No corpus that exists contains either shape, so a fix could not be told from a coin flip. Waits on round 7's measurement design. |
 | Both "class rule" guards are source-spelling lints, not the semantic properties their docstrings name. `test_every_pattern_is_anchored` passes `r"\bfoo\|ran"`, whose second branch starts mid-word. The gap guard recognises `[^.]{0,60}` and misses `.{0,60}`, `[\s\S]{0,60}`, `[^!]{0,60}`. | Round 6 review, pass 1, by mutation | The tests keep regression value for the encodings they do recognise. Strengthening them is cheap and is not the reason they failed — the write-ups claimed a class was closed on the strength of a lint, and that claim is the defect. Fix the claim first; see the README's round-4 and round-5 sections. |
 | `\bran` matches the prefix of `range`, `randomly`, `ransacked`. "Can you check the price range in the email from Denise? The report is slow to load" is refused. | Round 6 review, pass 1, reproduced | Start-only anchoring was taken to preserve stemming, and its false-positive cost was never recorded anywhere. It is recorded now. `ran` is a complete lexeme rather than a stem and could carry a trailing boundary, but a one-alternative edit is the instance repair this file keeps logging; it goes in with the clause work, measured. |
+| **Open question, not a defect: what does `spent` scope over — a set, or a set and a layer?** Round 6 spent `round6-codex` because its aggregate was used to reject decomposition configurations. Those were stage-2 changes; stage 1 was neither altered nor consulted, so its verdicts on that corpus are arguably still a live baseline. Deciding yes would release 5 positives and make the undirected floor 4 of 30 rather than 3 of 25. | The 3/33 split, which had to choose | Left open deliberately. The session that wants a number is the wrong one to widen the rule that releases it, and "spent binds the layer that was selected on" is a rule change that would apply to every future round. Settle it in round 7's design, before a round needs the answer. |
 | No bound on ticket length before `scan`. Roughly linear, ~0.9s for 1 MB — no catastrophic backtracking found. | Round 6 review, pass 1, timed | Availability, not classification, and the synthetic store makes it unreachable today. Real once a live adapter exists. |

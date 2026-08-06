@@ -378,10 +378,21 @@ cannot estimate performance**, because the sample is shaped by the commissioner'
 worry. The probe's numbers are never quoted as recall. See
 [`eval/README.md`](eval/README.md).
 
-**Stage 1 caught 0 of 13.** Combined with round 4, **3 of 33** independently
-authored incidents. Twelve payment tickets produced zero indicator hits,
-including six that violate KB-006's conjunction outright; the BEC rule has now
-failed to fire on thirteen payment tickets across two corpora.
+**Stage 1 caught nothing in either file.** On the undirected corpus that is 0 of
+5, and with round 4's twenty, **3 of 25** independently authored incidents.
+
+The probe's eight are reported separately and are not in that denominator. This
+used to read "3 of 33", pooling them in, and round 6's review was right to call
+it the sharpest violation of this project's own rule: a directed sample cannot
+estimate performance, and independent *authorship* does not change what a
+directed *sample* is. That the pooling erred toward self-criticism — payment
+tickets being the seam stage 1 structurally misses — is not a defence. The rule
+is about what a sample can estimate, not about which direction the error flatters.
+
+Read case by case, the probe is still the sharper half: twelve payment tickets,
+zero indicator hits, including six that violate KB-006's conjunction outright.
+The BEC rule has now failed to fire on thirteen payment tickets across two
+corpora. That is a finding about a specific rule, which is what a probe is for.
 
 **The anti-abuse clause held.** Both injections were refused — one where
 verification was merely asserted, one carrying a frozen-account story and a
@@ -445,7 +456,7 @@ existed — still stands.
 
 The real blocker is the harness. Every number in this README rests on one sample
 per case, with no repeats and no threshold for what counts as a difference. That
-was fine while findings reproduced across corpora — stage 1's 3-of-33, the
+was fine while findings reproduced across corpora — stage 1's floor, the
 conjunction failure — and it is not fine for evaluating a change. Repeated
 sampling comes before the next fix attempt, not after.
 
@@ -468,9 +479,11 @@ suite would have surfaced it.
 
 ### What this does and does not establish
 
-Stage 2 does the work. Stage 1 catches 3 of 33 incidents on unfamiliar language
-and is not a meaningful detector on its own — it is a floor whose value is that
-it cannot be argued with, not that it sees much.
+Stage 2 does the work. Stage 1 catches 3 of 25 incidents on undirected, unfamiliar
+language and is not a meaningful detector on its own — it is a floor whose value
+is that it cannot be argued with, not that it sees much. On the two directed
+payment probes it caught none of sixteen, which is a fact about that seam rather
+than an estimate of anything, and is not pooled into the figure above.
 
 That distinction is the point of the project rather than a disclaimer on it:
 **this removes the negotiability of the rule, not the difficulty of
@@ -745,9 +758,17 @@ forgotten.
   support elicitation. It proves a preview was issued and that the commit matches
   it, and it says which of the two you got.
 - The indicator scan is deterministic regex with known gaps in both directions.
-  Measured on a held-out corpus it catches 3 of 20 incidents, including only 3 of
-  the 10 that KB-006 names explicitly. It is a floor, and a low one — its value
-  is that it cannot be argued with, not its coverage.
+  Across two undirected held-out corpora it catches 3 of 25 incidents, including
+  only 3 of the 10 that KB-006 names explicitly, and 0 of 16 on the two directed
+  payment probes. It is a floor, and a low one — its value is that it cannot be
+  argued with, not its coverage.
+- Both directions have live defects, found by independent review and logged in
+  `eval/README.md`: routine tickets are refused where an ordinary coordinator
+  (`and`, `then`, a bare `;`) sits between a verb and its object, and where a
+  pattern matches the prefix of a longer word (`\bran` inside "range"). They are
+  logged rather than patched because the last three repairs of this fault were
+  each announced as a rule and each turned out to be an instance, and no corpus
+  that exists contains either shape.
 - The round-four figures rest on n=40, one corpus, one author, one model. The
   precision half was written to seams suggested in the commissioning brief;
   recall was not. Two of those 40 cases are now spent, so a rerun measures 38.
