@@ -426,9 +426,15 @@ two independently authored corpora, same failure.
 
 So the conjunction was moved out of the prompt and into code: one observation per
 condition from the model, the AND computed in `msp_tools`. That is this repo's
-own argument applied to the last place it wasn't. It was measured three ways and
-**all three were worse than the prompt** on recall, and it was reverted. The full
-table is in [`eval/README.md`](eval/README.md).
+own argument applied to the last place it wasn't. It was built three ways and
+reverted, and **this section used to say all three measured worse than the
+prompt** — a comparative claim, three paragraphs above the admission that
+nothing in that session could tell a fix from a coin flip. Round 6's review
+caught it. What actually held is one invariant and one absence of evidence: the
+variant letting the rule decide in both directions is dead on structure, because
+a component reading attacker-controlled text may add refusals and never remove
+them; the additive variants are unresolved, and by construction cannot fix
+over-refusal anyway. See [`eval/README.md`](eval/README.md).
 
 The interesting failure is not the first one. It is that single cases moved in
 both directions between configurations, each movement got a mechanism attached to

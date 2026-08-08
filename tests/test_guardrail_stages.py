@@ -150,3 +150,88 @@ def test_six_security_tickets_still_refuse_through_the_composed_guardrail(tid: s
     ticket = next(t for t in store if t["ticket_id"] == tid)
     a = guardrail.assess(ticket, StubClassifier(default=False))
     assert a.is_security is True, f"{tid} no longer refuses"
+
+
+# --- the description must not lag the architecture --------------------------
+
+def test_draft_response_description_describes_both_stages() -> None:
+    """`draft_response`'s description spent two rounds describing a guardrail
+    that no longer existed.
+
+    It listed the two deterministic routes as the decision, exhaustively, and
+    called the content scan "Layer 2" — text written before stage 2 was added
+    and never revisited. Round 6's independent review found it. This matters
+    more than the same staleness in a README: the README is read by people who
+    can notice it is out of date, and this string is read at runtime by a model
+    with no other source of truth about what the tool does.
+
+    The failure mode is the one `test_tool_description_does_not_promise_human_
+    review` guards for `update_ticket`: a description that outruns, or in this
+    case lags, the code.
+    """
+    import asyncio  # noqa: PLC0415
+    import re  # noqa: PLC0415
+
+    from msp_tools.server import mcp  # noqa: PLC0415
+
+    tools = asyncio.run(mcp.list_tools())
+    raw = next(t for t in tools if t.name == "draft_response").description or ""
+    # Whitespace-normalised, so a phrase does not stop matching because someone
+    # reflowed the paragraph. "stage 1 alone" already failed once that way.
+    desc = re.sub(r"\s+", " ", raw)
+
+    assert "Layer 2" not in desc, "description still uses the pre-stage-2 vocabulary"
+    assert "STAGE 2" in desc, "description must name the model classifier"
+    assert "ADD a refusal" in desc, "description must state stage 2 is additive only"
+    assert "fails closed" in desc, "description must state the fail-closed behaviour"
+    assert "stage 1 alone" in desc, "description must disclose the regex-only mode"
+
+    # The indicator list must not read as closed. The first version of this
+    # rewrite named seven of the eight indicators and closed the sentence, and
+    # the one it dropped was `phishing_link_or_message_engaged` — the half of
+    # KB-006 bullet 1 that the round-one review already found missing from the
+    # CODE, called the most serious defect it found, and which was then fixed.
+    # Reintroducing it in the description would tell a calling model that a
+    # clicked phishing link with no symptoms is outside the guardrail, which is
+    # the one case KB-006 is explicit about.
+    assert "among them" in desc, "the indicator list must not read as exhaustive"
+    assert "non-exhaustive" in desc, "description must say the list is open"
+    assert "phishing" in desc.lower(), "description must name link/attachment engagement"
+
+
+def test_the_description_names_at_least_as_many_indicators_as_exist() -> None:
+    """A weak guard on a real drift, and weak on purpose.
+
+    Indicator ids are not English, so nothing here can check that each one is
+    described accurately — only that the description was not left behind when
+    the table grew. It counts semicolon- and comma-separated items in the
+    indicator sentence against `len(security.INDICATORS)`. A rename or a
+    reworded entry will not trip it; adding a ninth indicator and forgetting
+    the string will.
+
+    The honest version of this test would compare meanings, which no assertion
+    can do. This catches the arithmetic and says so.
+    """
+    import asyncio  # noqa: PLC0415
+    import re  # noqa: PLC0415
+
+    from msp_tools import security  # noqa: PLC0415
+    from msp_tools.server import mcp  # noqa: PLC0415
+
+    tools = asyncio.run(mcp.list_tools())
+    desc = re.sub(r"\s+", " ", next(t for t in tools if t.name == "draft_response").description or "")
+
+    start = desc.find("among them:")
+    end = desc.find("KB-006's list is explicitly", start)
+    assert start != -1 and end != -1, "the indicator sentence has been restructured"
+
+    segment = desc[start + len("among them:") : end]
+    # Parentheticals are dropped before splitting: a comma inside one made this
+    # count 9 phrases for 8 indicators, which would have let a ninth indicator
+    # be added with no description change and still pass.
+    segment = re.sub(r"\([^)]*\)", "", segment)
+    listed = [p for p in segment.split(",") if p.strip()]
+    assert len(listed) >= len(security.INDICATORS), (
+        f"description lists {len(listed)} indicator phrases but "
+        f"security.INDICATORS defines {len(security.INDICATORS)}"
+    )

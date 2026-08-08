@@ -351,8 +351,26 @@ it report one observation per condition and compute the AND in code. That is
 this project's own argument — logic in the tool layer, not the prompt — applied
 to the place it had not been.
 
-It was built, measured three ways, and reverted. All three were worse than the
-prompt-only baseline on the direction that matters.
+It was built three ways and reverted. Here is what was decided about each, and
+on what:
+
+| Configuration | Monotone? | Disposition |
+|---|---|---|
+| rule authoritative in both directions | **No** — the rule could clear a ticket the model had refused | **Rejected on structure.** Does not need a measurement and never did. |
+| rule additive only | Yes | **Unresolved.** Rejected at the time on a corpus reading that cannot support the comparison. |
+| additive, prompt restored to "your verdict is used" | Yes | **Unresolved**, same reason. |
+
+This table used to be a results table with recall percentages and a bolded
+winner, under the sentence "all three were worse than the prompt-only baseline
+on the direction that matters" — four paragraphs above the admission that
+nothing here can distinguish a fix from a coin flip. Both cannot stand. The
+readings are facts about the calls that were made; "worse" is a comparative
+claim about the configurations, and that is exactly what one sample on an
+already-spent corpus cannot support. The conclusion outlived its evidence
+because it was written first.
+
+The counts are kept below, because they are the record of what was selected on
+and therefore why the corpora were spent — audit value, not performance value:
 
 | Configuration | probe: caught of 8 | undirected: caught of 5 |
 |---|---|---|
@@ -361,10 +379,8 @@ prompt-only baseline on the direction that matters.
 | rule additive only | 3 | 5 |
 | additive, prompt restored to "your verdict is used" | 3 | 4 |
 
-Counts, not percentages, and no bolded winner. These are four single-call
-session observations on twenty-one cases; a percentage under a `recall` heading
-with the best row in bold is a performance comparison, which is the one thing
-the paragraph below says these numbers cannot support.
+Four single-call session observations across twenty-one cases. No row is a
+performance estimate and no pair of rows is a comparison.
 
 Two things went wrong, and the second is the one worth reading.
 
@@ -391,8 +407,28 @@ time, but structure read into movement and called a mechanism. The conjunction
 failure itself is probably real, because it reproduced across two corpora and
 two prompts. Nothing else claimed during that session is.
 
-The decomposition is therefore logged, not shipped. The reasoning may still be
-right; it was never measured well enough to say.
+The decomposition is therefore logged, not shipped — but "the reasoning may
+still be right, it was never measured well enough to say" is too generous, and
+round 6's review said so. Two things narrow it, and neither needs a measurement:
+
+**The authoritative variant is dead on structure, not on numbers.** A component
+whose input is a model reading attacker-controlled ticket text may add refusals
+and may never remove them. That is the invariant governing stage 1 to stage 2,
+it applies inside stage 2 for the identical reason, and it was broken here
+without anyone noticing. No corpus result could revive this variant and none was
+ever needed to reject it. It was rejected on the right grounds by accident.
+
+**The additive variants cannot fix the defect they were built for.** The
+conjunction failure points both ways: conditions absent that should refuse, and
+conditions present that should clear. Over-refusal was half of it — 1 of 4 in
+round 5, 2 of 8 in round 6. A rule that may only *add* refusals cannot clear a
+ticket the holistic verdict wrongly refused, by construction. So the surviving
+claim is not "decomposition may work". It is narrower: an additive rule might
+improve missed-incident recall without weakening monotonicity, and even that is
+unmeasured.
+
+What was actually established in round 6 is one invariant and one absence of
+evidence. Neither is "decomposition is worse".
 
 ### Two consequences
 
