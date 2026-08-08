@@ -199,39 +199,69 @@ def test_draft_response_description_describes_both_stages() -> None:
     assert "phishing" in desc.lower(), "description must name link/attachment engagement"
 
 
-def test_the_description_names_at_least_as_many_indicators_as_exist() -> None:
-    """A weak guard on a real drift, and weak on purpose.
+# Each indicator id, and wording that must appear in `draft_response`'s
+# description if that indicator is described there at all. The first version of
+# this guard counted comma-separated phrases instead, which was a floor on
+# arithmetic rather than a mapping: adding a ninth indicator while splitting an
+# existing phrase in two would have passed it. Counting cannot tell you WHICH
+# one went missing, and which one it was turned out to be the whole point.
+INDICATOR_DESCRIPTION_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "ransomware_or_file_encryption": ("ransom note", "files encrypted"),
+    "phishing_link_or_message_engaged": ("phishing",),
+    "credentials_entered_on_suspicious_site": ("credentials entered",),
+    "attachment_or_link_then_behavior_change": ("attachment opened",),
+    "browser_hijack": ("browser hijack",),
+    "vendor_payment_change_bec": ("bank details",),
+    "spoofed_or_impersonated_email": ("spoofing",),
+    "denied_account_change": ("denying an account change",),
+}
 
-    Indicator ids are not English, so nothing here can check that each one is
-    described accurately — only that the description was not left behind when
-    the table grew. It counts semicolon- and comma-separated items in the
-    indicator sentence against `len(security.INDICATORS)`. A rename or a
-    reworded entry will not trip it; adding a ninth indicator and forgetting
-    the string will.
 
-    The honest version of this test would compare meanings, which no assertion
-    can do. This catches the arithmetic and says so.
+def test_the_keyword_map_covers_every_indicator() -> None:
+    """The half of the guard that cannot be forgotten.
+
+    A hand-written map is itself a list that can drift, so this pins it to the
+    table. Add a ninth indicator and this fails naming the id you did not
+    account for — which forces the choice to be made rather than skipped, and
+    the next test then checks the description actually says it.
+    """
+    from msp_tools import security  # noqa: PLC0415
+
+    assert set(INDICATOR_DESCRIPTION_KEYWORDS) == {i.id for i in security.INDICATORS}, (
+        "INDICATOR_DESCRIPTION_KEYWORDS is out of step with security.INDICATORS — "
+        "add the new indicator's wording here, then say it in the description"
+    )
+
+
+def test_the_description_names_every_indicator() -> None:
+    """Every indicator in the table must be findable in the description.
+
+    What this closes: an indicator existing in code and missing from the string
+    a calling model reads. That is not hypothetical — the first draft of this
+    rewrite dropped `phishing_link_or_message_engaged`, the one KB-006 treats
+    as sufficient on its own.
+
+    What it does NOT close, and cannot: an indicator described *inaccurately*.
+    "browser hijack" appearing in the text proves the phrase is present, not
+    that what surrounds it is true. No assertion compares meanings. That is why
+    `.claude/CLAUDE.md` sends tool descriptions to a reviewer as well, and this
+    test is not a substitute for that.
     """
     import asyncio  # noqa: PLC0415
     import re  # noqa: PLC0415
 
-    from msp_tools import security  # noqa: PLC0415
     from msp_tools.server import mcp  # noqa: PLC0415
 
     tools = asyncio.run(mcp.list_tools())
-    desc = re.sub(r"\s+", " ", next(t for t in tools if t.name == "draft_response").description or "")
+    raw = next(t for t in tools if t.name == "draft_response").description or ""
+    desc = re.sub(r"\s+", " ", raw).lower()
 
-    start = desc.find("among them:")
-    end = desc.find("KB-006's list is explicitly", start)
-    assert start != -1 and end != -1, "the indicator sentence has been restructured"
-
-    segment = desc[start + len("among them:") : end]
-    # Parentheticals are dropped before splitting: a comma inside one made this
-    # count 9 phrases for 8 indicators, which would have let a ninth indicator
-    # be added with no description change and still pass.
-    segment = re.sub(r"\([^)]*\)", "", segment)
-    listed = [p for p in segment.split(",") if p.strip()]
-    assert len(listed) >= len(security.INDICATORS), (
-        f"description lists {len(listed)} indicator phrases but "
-        f"security.INDICATORS defines {len(security.INDICATORS)}"
+    missing = [
+        ind_id
+        for ind_id, phrases in INDICATOR_DESCRIPTION_KEYWORDS.items()
+        if not any(p.lower() in desc for p in phrases)
+    ]
+    assert not missing, (
+        "indicator(s) defined in security.py but not described to the calling "
+        "model:\n  " + "\n  ".join(missing)
     )
