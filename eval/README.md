@@ -131,6 +131,72 @@ in prose, which worked only because the boundary happened to fall along
 `case_type`. It does not in round 5, where directed cases span every type. Two
 files is the version of that honesty which does not depend on a coincidence.
 
+## Round 7: the protocol, written before the corpora exist
+
+Round 6's real failure was not the decomposition. It was that three
+configurations were tried against the only two corpora that could grade them,
+and nothing was held back — so when the question "did this work?" arrived, there
+was nothing left to answer it with. **Reserving capacity is not something you can
+do afterwards.** This section is written before the round 7 commission is placed,
+and it is the commitment, not a description of one.
+
+### The three files, and which one is sealed
+
+`briefs/round7.md` commissions three: `round7-payment-alpha` and
+`round7-payment-beta`, written to identical specifications and to the same
+target, and `round7-codex`, undirected. The author is told nothing that
+distinguishes alpha from beta, and is told explicitly not to theorise about it —
+if the two files differ in difficulty or care, the design is worthless.
+
+**Declared now, before either file exists:**
+
+| File | Role | May be read |
+|---|---|---|
+| `round7-payment-alpha` | development | freely, from the moment it arrives |
+| `round7-payment-beta` | **sealed holdout** | once, after a candidate fix is locked |
+| `round7-codex` | control | once, with beta. Never consulted during development |
+
+Alpha is development because it is first alphabetically. That is the entire
+reason, and it is a reason precisely because it cannot be influenced by
+anything in the files.
+
+### What "sealed" has to mean to be worth anything
+
+- Beta and `round7-codex` are not run, not opened, not read, and not skimmed
+  for interesting cases while a fix is being developed. Not with `--dry-run`,
+  which is free and therefore the tempting way to break this.
+- A candidate is **locked** when it is committed and its diff is final. Only
+  then does beta open.
+- Beta is read **once**. If the candidate fails on beta, the candidate is
+  rejected and beta is spent — it does not become the new development set for
+  attempt two. Attempt two needs a fresh commission. This is the expensive rule
+  and it is the one doing the work: an unlimited-retry holdout is a development
+  set with extra steps.
+- The comparison rule is fixed here, in advance: **`--samples 5`, and a
+  configuration counts as better only if it beats the baseline by more than the
+  corpus's own instability count**, which the harness prints. Any difference
+  smaller than that is noise and gets no mechanism attached to it. Round 6
+  produced three causal stories at n=16 with one sample; two were wrong.
+
+### The spend-scope rule, decided here
+
+The ledger has been carrying an open question: does a spend bind the whole
+corpus, or only the layer that was selected on? Round 6 spent `round6-codex`
+over a stage-2 change while stage 1 was neither altered nor consulted, and its
+stage-1 numbers are arguably still live. **Decided now, while no number in this
+repo depends on the answer** — which is the condition the earlier session named
+for deciding it, and it holds today and will not hold once round 7 returns:
+
+> **A spend binds every layer, unless the run was predeclared in writing as
+> evaluating a named layer and no result from it influenced any other. A
+> per-layer carve-out claimed after the results are in is never valid.**
+
+Note what this does *not* do. Round 6 had no such predeclaration, so its spend
+stays set-wide, `round6-codex`'s five positives stay out, and the undirected
+floor stays **3 of 25** rather than the 4 of 30 that a retroactive carve-out
+would have released. The rule was chosen while the number it refuses was the one
+in view. That is the only circumstance under which choosing it means anything.
+
 ## Reading a result
 
 - **Recall is the number that matters.** A false negative is a compromised machine
@@ -459,12 +525,23 @@ out which cases carried the signal requires exactly the per-case causal
 attribution this session concluded is unsupportable at n=16 with one sample —
 so a partial spend would re-commit the error the section above diagnoses.
 
-**Both payment probes are now spent, so no live corpus can measure the
-conjunction defect.** That is the real cost of the last two rounds, and it is
-narrower and worse than a global claim. The conjunction failure is the one
-finding still open, `round5-payment-probe` and `round6-payment-probe` are the
-only corpora ever written against it, and both have been optimised against.
-Progress on it waits on a new commission.
+**Both payment probes are now contaminated for the conjunction claim, so no
+live corpus can measure the conjunction defect.** That is the real cost of the
+last two rounds, and it is narrower and worse than a global claim. The
+conjunction failure is the one finding still open, `round5-payment-probe` and
+`round6-payment-probe` are the only corpora ever written against it, and both
+have been optimised against.
+
+> **A note on the word `spent`, because this paragraph used to overload it.**
+> It said "both payment probes are now spent" — and `spent` is a per-case flag
+> the harness reads, of which `round5-payment-probe` carries 2 out of 12. Ten
+> of its cases still qualify and its row still prints. Both statements were in
+> the same section, meaning incompatible things by the same word: one a
+> machine-readable per-case fact, the other a human judgement that a corpus can
+> no longer speak to one particular question. Only `round6-payment-probe` is
+> spent in the flag's sense, every case. The other is contaminated for the
+> conjunction and live for everything else, and the distinction is the whole
+> content of the paragraph below.
 
 Elsewhere the stock is not exhausted. By the harness's own count 68 cases
 still qualify — `round3-inhouse` 11, `round4-codex` 38, `round5-codex` 9,
@@ -570,9 +647,8 @@ regression across six corpora" as though it were one.
 | Defect | Evidence | Why not fixed |
 |---|---|---|
 | The classifier does not treat KB-006's exception as a conjunction. Absence of the callback condition refuses; absence of internal approval or a known confirmer clears. | round5-payment-probe, round6-payment-probe — two corpora, two prompt versions | Two prompt rewrites failed to move it and the code fix measured worse. It stays open rather than being patched again on evidence that cannot support a patch. Next attempt waits on repeated sampling in the harness. |
-| ~~The harness cannot distinguish a real change from sampling noise.~~ **Narrowed:** the harness now can — `--samples N` reports per-case instability and a difference threshold. What remains is that no number in these files has been *taken* that way, and both payment probes are spent, so the conjunction defect still has nothing live to be measured against. | The three decomposition configurations above | The capability shipped in `9984067`. This row claimed it was unfixed for a round after that was true, which is the same lag the round-6 review found in the tool description — a defect entry outliving its defect reads as honesty and functions as noise. The blocker was never the harness alone; it is a fresh corpus plus a comparison rule fixed **before** results are read. |
+| ~~The harness cannot distinguish a real change from sampling noise.~~ **Narrowed:** the harness now can — `--samples N` reports per-case instability and a difference threshold. What remains is that no number in these files has been *taken* that way, and both payment probes are contaminated for the conjunction claim (only `round6-payment-probe` is `spent` in the flag's per-case sense), so that defect still has nothing live to be measured against. | The three decomposition configurations above | The capability shipped in `9984067`. This row claimed it was unfixed for a round after that was true, which is the same lag the round-6 review found in the tool description — a defect entry outliving its defect reads as honesty and functions as noise. The blocker was never the harness alone; it is a fresh corpus plus a comparison rule fixed **before** results are read. |
 | `_CLAUSE_BREAK` holds thirteen SUBORDINATING conjunctions. Coordinators and discourse markers are absent, so round 5's false positive returns verbatim with "and", ", then", "as", ":", "?", "!" or a bare ";" in place of "because". `_same_clause` also treats "after", "before", "while" and "since" as clause breaks when they are prepositions. | Round 6 review, pass 1, reproduced | Widening the list is exactly what produced the false negative fixed above, and this is the third repair of the wrong-object fault to be announced as a rule and turn out to be an instance. No corpus that exists contains either shape, so a fix could not be told from a coin flip. Waits on round 7's measurement design. |
 | Both "class rule" guards are source-spelling lints, not the semantic properties their docstrings name. `test_every_pattern_is_anchored` passes `r"\bfoo\|ran"`, whose second branch starts mid-word. The gap guard recognises `[^.]{0,60}` and misses `.{0,60}`, `[\s\S]{0,60}`, `[^!]{0,60}`. | Round 6 review, pass 1, by mutation | The tests keep regression value for the encodings they do recognise. Strengthening them is cheap and is not the reason they failed — the write-ups claimed a class was closed on the strength of a lint, and that claim is the defect. Fix the claim first; see the README's round-4 and round-5 sections. |
 | `\bran` matches the prefix of `range`, `randomly`, `ransacked`. "Can you check the price range in the email from Denise? The report is slow to load" is refused. | Round 6 review, pass 1, reproduced | Start-only anchoring was taken to preserve stemming, and its false-positive cost was never recorded anywhere. It is recorded now. `ran` is a complete lexeme rather than a stem and could carry a trailing boundary, but a one-alternative edit is the instance repair this file keeps logging; it goes in with the clause work, measured. |
-| **Open question, not a defect: what does `spent` scope over — a set, or a set and a layer?** Round 6 spent `round6-codex` because its aggregate was used to reject decomposition configurations. Those were stage-2 changes; stage 1 was neither altered nor consulted, so its verdicts on that corpus are arguably still a live baseline. Deciding yes would release 5 positives and make the undirected floor 4 of 30 rather than 3 of 25. | The 3/33 split, which had to choose | Left open deliberately. The session that wants a number is the wrong one to widen the rule that releases it, and "spent binds the layer that was selected on" is a rule change that would apply to every future round. Settle it in round 7's design, before a round needs the answer. |
 | No bound on ticket length before `scan`. Roughly linear, ~0.9s for 1 MB — no catastrophic backtracking found. | Round 6 review, pass 1, timed | Availability, not classification, and the synthetic store makes it unreachable today. Real once a live adapter exists. |
