@@ -82,6 +82,7 @@ stack trace:
 |---|---|
 | `TICKET_NOT_FOUND` | No ticket with that ID |
 | `KB_NO_MATCH` | Query matched no KB article above threshold |
+| `KB_UNAVAILABLE` | The corpus could not be read at all. A server fault, not a coverage gap - never report it as "nothing found" |
 | `SECURITY_ESCALATION_REQUIRED` | Refusal; route to security team |
 | `CONFIRMATION_REQUIRED` | Dry run; carries the preview and a confirmation_token |
 | `CONFIRMATION_INVALID` | Token fabricated, reused, expired, issued for a different change, or the ticket moved |

@@ -726,7 +726,8 @@ uv run python scripts/eval_classifier.py round4-codex             # both stages,
 ```
 
 The harness excludes cases that can no longer measure anything — `leaked` ones
-the author could see, `spent` ones the system was changed in response to — and
+the author could see, `spent` ones that became an optimisation target or a
+selection criterion, whether or not a change shipped — and
 prints the excluded count, the reason, and both rows.
 
 Every corpus carries a `provenance` block naming what its author was given, what
