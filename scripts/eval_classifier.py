@@ -146,6 +146,24 @@ DIRECTED = frozenset({
 })
 
 
+# Corpora that may not be run without an explicit, recorded reason.
+#
+# A sealed corpus is a holdout: it may be opened ONCE, after a candidate fix is
+# committed and its diff is final, and reading it earlier destroys the only
+# thing it was commissioned to provide. That rule lived in `eval/README.md` as a
+# paragraph, and on 2026-08-10 it was broken twice within an hour — once by an
+# instruction I wrote myself naming a sealed file, once by an assistant checking
+# the corpora that instruction had not named, which is ordinary diligence.
+# Neither reader had seen the paragraph.
+#
+# This repo's whole argument is that a rule in prose is a request and a rule in
+# code is a wall, and the eval harness was the one place that argument had not
+# been applied. `--unseal` is the wall. It cannot stop a determined person —
+# nothing here can — but it makes opening a holdout a deliberate act that leaves
+# a record, instead of a side effect of being thorough.
+SEALED: dict[str, str] = {}
+
+
 def score(results: list[tuple[bool, bool]]) -> dict[str, float | int]:
     """results: list of (expected_refuse, actual_refuse)."""
     tp = sum(1 for e, a in results if e and a)
@@ -241,6 +259,15 @@ def main() -> None:
             "itself. Costs N times as much. Stage 1 is deterministic and is run once."
         ),
     )
+    ap.add_argument(
+        "--unseal",
+        metavar="REASON",
+        help=(
+            "open a sealed holdout corpus. Requires a reason, which is printed "
+            "with the results. A holdout may be opened once, after a candidate "
+            "is committed and its diff is final."
+        ),
+    )
     args = ap.parse_args()
 
     # Odd samples only. Ties break toward refusal, which is correct for the
@@ -281,7 +308,13 @@ def main() -> None:
                 note = " <-- discloses leakage, read it" if d.get("provenance", {}).get(
                     "known_leakage"
                 ) else ""
-                state = "REGRESSION SUITE" if qualifying == 0 else f"{qualifying:>3} qualifying"
+                if p.stem in SEALED:
+                    state = "SEALED"
+                    note = f" <-- HOLDOUT: {SEALED[p.stem]}"
+                elif qualifying == 0:
+                    state = "REGRESSION SUITE"
+                else:
+                    state = f"{qualifying:>3} qualifying"
                 print(
                     f"  {p.stem:22} {len(cases):>3} cases  {state:>16}   "
                     f"{d.get('provenance', {}).get('author', '?')}{note}"
@@ -300,11 +333,44 @@ def main() -> None:
     path = Path(args.corpus)
     if not path.exists():
         path = CORPORA_DIR / f"{args.corpus}.json"
+
+    # The seal is checked BEFORE the corpus is loaded and before anything is
+    # printed, so a refused run reveals nothing about the file — not a case
+    # count, not an author, not a provenance block. A gate that leaks while
+    # refusing is a gate in name only.
+    if path.stem in SEALED and not args.unseal:
+        print(
+            f"error: {path.stem} is a SEALED holdout.\n"
+            f"  {SEALED[path.stem]}\n"
+            "\n"
+            "  A holdout may be opened ONCE, after a candidate fix is committed\n"
+            "  and its diff is final. Reading it earlier destroys the only thing\n"
+            "  it was commissioned to provide, and --dry-run is not exempt: it is\n"
+            "  free, which is what makes it the tempting way to break this.\n"
+            "\n"
+            "  If you are genuinely at that point:\n"
+            '    --unseal "candidate <sha> locked, opening holdout as planned"\n'
+            "\n"
+            "  Then record the reading in eval/README.md and remove it from\n"
+            "  SEALED. A holdout is opened once; the entry should not survive it.",
+            file=sys.stderr,
+        )
+        raise SystemExit(3)
+
     try:
         data = load_corpus(path)
     except CorpusError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(2) from None
+
+    if args.unseal:
+        print("=" * 78)
+        print(f"UNSEALING {path.stem} — this is a one-time reading.")
+        print(f"  reason given: {args.unseal}")
+        if path.stem not in SEALED:
+            print("  NOTE: this corpus was not sealed. --unseal did nothing.")
+        print("=" * 78)
+        print()
 
     classifier = NullClassifier() if args.dry_run else build_default(KB_DIR)
     live = not isinstance(classifier, NullClassifier)

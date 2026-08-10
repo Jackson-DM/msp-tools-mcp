@@ -72,16 +72,33 @@ $briefs = @(Get-ChildItem (Join-Path $briefDir 'round*.md') -File |
     Sort-Object { [int]($_.BaseName -replace '\D', '') })
 if ($briefs.Count -eq 0) { throw "No briefs found in $briefDir" }
 
+# Two briefs must never reduce to the same number. The selector strips
+# non-digits, so round7.md and round7b.md both became 7: the default path picked
+# one by an accident of alphabetical order, and -Round 7 matched both and took
+# $hit[0] silently - which is the ORIGINAL brief, delivered under the label of
+# the replacement. A commission handed the wrong brief looks completely normal
+# in the audit listing and is not discovered until the corpora come back wrong.
+# Refuse instead of guessing; give the next round its own number.
+$byNumber = @{}
+foreach ($b in $briefs) {
+    $n = [int]($b.BaseName -replace '\D', '')
+    if ($byNumber.ContainsKey($n)) {
+        throw ("Ambiguous briefs: '{0}' and '{1}' both read as round {2}. " -f
+               $byNumber[$n].BaseName, $b.BaseName, $n) +
+              "Brief names must differ by number, not by suffix. Rename one."
+    }
+    $byNumber[$n] = $b
+}
+
 if (-not $Round) {
     $brief = $briefs[-1]
     $Round = [int]($brief.BaseName -replace '\D', '')
 } else {
-    $hit = @($briefs | Where-Object { [int]($_.BaseName -replace '\D', '') -eq $Round })
-    if ($hit.Count -eq 0) {
+    if (-not $byNumber.ContainsKey($Round)) {
         $have = ($briefs | ForEach-Object { $_.BaseName }) -join ', '
         throw "No brief for round ${Round}. Have: $have"
     }
-    $brief = $hit[0]
+    $brief = $byNumber[$Round]
 }
 
 $kb = Join-Path $repo 'kb\KB-006-security-incident-response.md'
@@ -170,9 +187,18 @@ Write-Host ""
 Write-Host "Then, back in the repo (a round may produce more than one corpus):"
 Write-Host "  Copy-Item `"$destFull\output\*.json`" .\eval\corpora\"
 Write-Host "  uv run python scripts/eval_classifier.py --list"
-Write-Host "  uv run python scripts/eval_classifier.py <corpus-id> --dry-run"
+Write-Host "  uv run python scripts/eval_classifier.py <development-corpus> --dry-run"
 Write-Host ""
-Write-Host "Run --dry-run first on every corpus. It is free, makes no API calls,"
-Write-Host "and stage 1's recall on an unfamiliar corpus is the baseline the"
-Write-Host "stage-2 number has to beat."
+Write-Host "--list first, and read the state column before running anything." -ForegroundColor Yellow
+Write-Host "A round may commission a SEALED holdout. Do NOT dry-run one." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "This block used to say 'run --dry-run first on every corpus, it is free'."
+Write-Host "On 2026-08-10 that advice was followed and it opened round 7's holdout"
+Write-Host "before a candidate existed. Free is exactly what makes it tempting: a"
+Write-Host "holdout read early has already given up the only thing it was"
+Write-Host "commissioned for. The harness now refuses a sealed corpus without"
+Write-Host "--unseal, so this is a reminder rather than the guard. See eval/README.md."
+Write-Host ""
+Write-Host "On a development corpus, --dry-run is free, makes no API calls, and"
+Write-Host "stage 1's recall there is the baseline the stage-2 number has to beat."
 Write-Host ""
