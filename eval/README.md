@@ -210,6 +210,69 @@ floor stays **3 of 25** rather than the 4 of 30 that a retroactive carve-out
 would have released. The rule was chosen while the number it refuses was the one
 in view. That is the only circumstance under which choosing it means anything.
 
+### The seal broke the same day it was written
+
+2026-08-10. Round 7's corpora arrived, and within an hour both sealed files had
+been read at stage 1 — before any candidate fix existed, which is the one thing
+the protocol above forbids.
+
+Two separate routes, and neither was carelessness:
+
+- I wrote a verification instruction that named `round7-codex` — the control —
+  and asked for a dry run on it, to check a display change.
+- An assistant carrying out that instruction also ran `round7-payment-beta`,
+  because it had been asked to sanity-check a change to how corpora are
+  labelled and beta was a corpus the instruction had not named. Checking the
+  unnamed cases rather than assuming is the behaviour this repo asks for
+  everywhere else.
+
+Neither reader had seen the protocol. It was a paragraph in this file, and
+nothing in the task required reading this file. **A rule in prose is a request** —
+which is the sentence the whole project is built on, applied everywhere except
+to the project's own process.
+
+**What leaked:** stage-1 verdicts on both files, aggregate and per-case, from a
+deterministic layer round 7 is not modifying. Stage 2 has never been run on
+either. It is genuinely hard to see how "stage 1 caught 0 of 8, same as every
+payment corpus before it" could shape a stage-2 fix.
+
+That argument is also available every time, and it is made by the party who
+would rather not commission a replacement. The rule written the previous day —
+*a per-layer carve-out claimed after the results are in is never valid* — closes
+the route that would have rescued this, one day after being written, against the
+person who wrote it. That is the only evidence that a rule of this kind is worth
+anything.
+
+**Decision: beta and `round7-codex` are retired as round 7's holdout and
+control.**
+
+They are **not** marked `spent`. Nothing optimised against them and nothing
+selected on them; they were *unsealed*, which is a third state. Round 6's review
+caught this file using one word for two incompatible things, and doing it again
+one section later would be worse than the original.
+
+What each becomes:
+
+| File | Was | Is now |
+|---|---|---|
+| `round7-payment-alpha` | development | development, unchanged |
+| `round7-payment-beta` | sealed holdout | **development.** Its 1:1 pairing with alpha makes it a natural extension of the dev set rather than a loss |
+| `round7-codex` | control | its stage-1 reading stands as a baseline — measurements taken before tuning remain true — but it cannot grade round 7's fix |
+
+**The replacement is better than what was lost.** `briefs/round8.md` commissions
+a fresh sealed holdout and a fresh control, written *without* the pairing
+instruction. Beta was a structural twin of alpha, which is why the protocol above
+had to record that it could only measure generalisation within a slot alpha had
+already seen. An independently written holdout does not carry that limitation.
+The accident cost a corpus and bought a better test.
+
+**And the seal now lives in the harness.** `SEALED` in
+`scripts/eval_classifier.py` refuses to run a listed corpus without
+`--unseal "reason"`, checks before the file is loaded so a refusal reveals
+nothing about it, and prints the reason with the results. It cannot stop a
+determined person. It stops opening a holdout from being a side effect of being
+thorough, which is what actually happened here.
+
 ## Reading a result
 
 - **Recall is the number that matters.** A false negative is a compromised machine
