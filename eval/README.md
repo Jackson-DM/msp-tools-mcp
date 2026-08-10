@@ -160,6 +160,19 @@ Alpha is development because it is first alphabetically. That is the entire
 reason, and it is a reason precisely because it cannot be influenced by
 anything in the files.
 
+**What beta can and cannot tell you, recorded on arrival and before any number
+exists.** The two files came back paired 1:1 on structure —
+`alpha_new_account_no_callback` ↔ `beta_pest_control_no_callback`,
+`alpha_no_internal_signoff` ↔ `beta_no_approval_for_roofing`, and so on through
+all sixteen. That is what "identical specifications" bought, and it is what
+makes alpha a fair proxy: a fix developed on one is tested on the same
+structural ground. It also narrows the claim. Beta measures whether a fix
+generalises across *surface wording within a structural slot it has already
+seen*. It does not measure generalisation to a fresh distribution, and a good
+number on it must not be reported as if it did. Written here on the day the
+corpora arrived, because this is the kind of qualification that becomes very
+hard to add once there is a result to attach it to.
+
 ### What "sealed" has to mean to be worth anything
 
 - Beta and `round7-codex` are not run, not opened, not read, and not skimmed
@@ -651,4 +664,5 @@ regression across six corpora" as though it were one.
 | `_CLAUSE_BREAK` holds thirteen SUBORDINATING conjunctions. Coordinators and discourse markers are absent, so round 5's false positive returns verbatim with "and", ", then", "as", ":", "?", "!" or a bare ";" in place of "because". `_same_clause` also treats "after", "before", "while" and "since" as clause breaks when they are prepositions. | Round 6 review, pass 1, reproduced | Widening the list is exactly what produced the false negative fixed above, and this is the third repair of the wrong-object fault to be announced as a rule and turn out to be an instance. No corpus that exists contains either shape, so a fix could not be told from a coin flip. Waits on round 7's measurement design. |
 | Both "class rule" guards are source-spelling lints, not the semantic properties their docstrings name. `test_every_pattern_is_anchored` passes `r"\bfoo\|ran"`, whose second branch starts mid-word. The gap guard recognises `[^.]{0,60}` and misses `.{0,60}`, `[\s\S]{0,60}`, `[^!]{0,60}`. | Round 6 review, pass 1, by mutation | The tests keep regression value for the encodings they do recognise. Strengthening them is cheap and is not the reason they failed — the write-ups claimed a class was closed on the strength of a lint, and that claim is the defect. Fix the claim first; see the README's round-4 and round-5 sections. |
 | `\bran` matches the prefix of `range`, `randomly`, `ransacked`. "Can you check the price range in the email from Denise? The report is slow to load" is refused. | Round 6 review, pass 1, reproduced | Start-only anchoring was taken to preserve stemming, and its false-positive cost was never recorded anywhere. It is recorded now. `ran` is a complete lexeme rather than a stem and could carry a trailing boundary, but a one-alternative edit is the instance repair this file keeps logging; it goes in with the clause work, measured. |
+| **Wrong object, fourth sighting — and the first from an author who could not see the patterns.** `phishing_link_or_message_engaged` fires on a bare noun with no engagement: `_MESSAGE_OBJECT`'s first two alternatives are `\battachment\b` and `\battached\b`, which are things rather than acts, and the indicator runs `window=0`, so any `fake`/`scam`/`suspicious` anywhere in the ticket completes it. `alpha_acquired_trade_name` — a legitimate verified bank change — was refused on `('attachment', 'fake')`, drawn from "Outlook keeps hiding the attachment preview" and "AP thought the email was fake", two unrelated sentences, the second describing a suspicion the user then resolved. | `round7-payment-alpha`, 2026-08-10, live dry run | Round 7 is scoped to the stage-2 conjunction. Beta opens once, and a candidate carrying two unrelated changes gives one reading that cannot attribute either — the round-6 failure exactly. **The case is deliberately NOT marked `spent`:** noticing a case does not spend it, acting on it does, and nothing has acted on it. It is the standing evidence for a dedicated wrong-object round, where it will be spent properly. |
 | No bound on ticket length before `scan`. Roughly linear, ~0.9s for 1 MB — no catastrophic backtracking found. | Round 6 review, pass 1, timed | Availability, not classification, and the synthetic store makes it unreachable today. Real once a live adapter exists. |
