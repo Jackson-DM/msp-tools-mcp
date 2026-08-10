@@ -123,6 +123,29 @@ def load_corpus(path: Path) -> dict:
     return data
 
 
+# Corpora written toward a target the COMMISSIONER named. These report counts
+# and never recall or precision — see `_line`.
+#
+# This list lives here, on the commissioner's side, rather than as a field in
+# the corpus files, and that placement is the point. `provenance` is the
+# AUTHOR's statement of what they were given and denied; whether the resulting
+# sample can estimate performance is a judgement the commissioner makes, and
+# writing it into the author's block would blur two different claims into one.
+#
+# `known_leakage` is not a usable proxy for this. `round4-codex` declares
+# leakage — its `hard_negative` cases were written to seams named in the brief —
+# and that qualifies its PRECISION while leaving recall untouched, which is why
+# the undirected floor is quotable from it at all. Suppressing rates on every
+# corpus with a non-null disclosure would delete the honest headline along with
+# the dishonest one. Direction and leakage are different properties.
+DIRECTED = frozenset({
+    "round5-payment-probe",
+    "round6-payment-probe",
+    "round7-payment-alpha",
+    "round7-payment-beta",
+})
+
+
 def score(results: list[tuple[bool, bool]]) -> dict[str, float | int]:
     """results: list of (expected_refuse, actual_refuse)."""
     tp = sum(1 for e, a in results if e and a)
@@ -142,11 +165,34 @@ def _pct(x: float) -> str:
     return " n/a" if x != x else f"{x:.0%}"
 
 
-def _line(label: str, results: list[tuple[bool, bool]]) -> str:
+def _line(label: str, results: list[tuple[bool, bool]], *, estimator: bool = True) -> str:
+    """One results row.
+
+    `estimator=False` prints counts and never the words "recall" or
+    "precision". Callers pass it for the corpora in `DIRECTED` — those written
+    toward a target the commissioner named — because `eval/README.md` says
+    outright that such a file finds defects and cannot estimate performance.
+    Note that this is direction, not `known_leakage`; see `DIRECTED` for why
+    the two are not interchangeable.
+
+    Printing `recall 0%` for it and relying on a paragraph elsewhere to explain
+    that the row is not quotable is asking a caption to undo what a table says.
+    It does not work: `3 of 33` reached the public README twice that way, and
+    the round-6 review called it the sharpest violation of this project's own
+    rule. A percentage under a `recall` heading IS a performance estimate, so
+    the fix is to stop printing one where none is licensed.
+    """
     m = score(results)
+    counts = f"(tp{m['tp']} fn{m['fn']} fp{m['fp']} tn{m['tn']})"
+    if estimator:
+        return (
+            f"{label:26}  recall {_pct(m['recall']):>4}  precision {_pct(m['precision']):>4}  "
+            f"accuracy {_pct(m['accuracy']):>4}   {counts}"
+        )
+    caught = f"{m['tp']} of {m['tp'] + m['fn']}"
+    refused = f"{m['fp']} of {m['fp'] + m['tn']}"
     return (
-        f"{label:26}  recall {_pct(m['recall']):>4}  precision {_pct(m['precision']):>4}  "
-        f"accuracy {_pct(m['accuracy']):>4}   (tp{m['tp']} fn{m['fn']} fp{m['fp']} tn{m['tn']})"
+        f"{label:26}  caught {caught:>8}   wrongly refused {refused:>8}   {counts}"
     )
 
 
@@ -317,8 +363,16 @@ def main() -> None:
         )
 
     print()
-    print(_line("stage 1 only (regex)", s1))
-    print(_line("both stages", both))
+    # A directed corpus gets counts, never recall/precision. See _line and DIRECTED.
+    estimator = data["corpus_id"] not in DIRECTED
+    print(_line("stage 1 only (regex)", s1, estimator=estimator))
+    print(_line("both stages", both, estimator=estimator))
+    if not estimator:
+        print(
+            "  Counts, not rates: this corpus was written toward a target the\n"
+            "  commissioner chose, so it finds defects and cannot estimate\n"
+            "  performance. Read it case by case."
+        )
 
     # --- how much of this is noise ---------------------------------------
     # Round 6 was evaluated at one sample per case. Single cases moved in both
@@ -393,7 +447,7 @@ def main() -> None:
                 + ", ".join(c["id"] for c, sp in zip(data["cases"], spent) if sp)
             )
         if qualifying:
-            print("  " + _line("qualifying subset only", qualifying).strip())
+            print("  " + _line("qualifying subset only", qualifying, estimator=estimator).strip())
             print(
                 "  Quote the qualifying row. The full-corpus row includes cases "
                 "that can no longer measure anything."
