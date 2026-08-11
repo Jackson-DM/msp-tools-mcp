@@ -56,10 +56,17 @@ the detector.**
 ## Commissioning a corpus
 
 ```powershell
-.\eval\handoff\make-handoff.ps1        # builds an isolated dir under TEMP
-cd $env:TEMP\_codex-corpus-handoff
+.\eval\handoff\make-handoff.ps1        # builds TEMP\_codex-corpus-round<N>
+cd $env:TEMP\_codex-corpus-round8      # the script prints the exact path
 codex                                   # reads AGENTS.md; give it nothing else
 ```
+
+**A new project for the author every round, never a resumed one.** The directory
+is per-round for the same reason: a shared path meant the previous round's
+project silently came to point at the next round's brief, so resuming that
+conversation would hand the author new instructions on disk and the old round's
+cases in context. It also meant the author's app held the directory open and
+blocked the next `-Force`. Both were live problems between rounds 6 and 7.
 
 ### What the isolation actually guarantees
 
@@ -90,7 +97,7 @@ expected.
 Then:
 
 ```powershell
-Copy-Item $env:TEMP\_codex-corpus-handoff\output\*.json .\eval\corpora\
+Copy-Item $env:TEMP\_codex-corpus-round8\output\*.json .\eval\corpora\
 uv run python scripts/eval_classifier.py --list
 uv run python scripts/eval_classifier.py <corpus-id> --dry-run
 ```

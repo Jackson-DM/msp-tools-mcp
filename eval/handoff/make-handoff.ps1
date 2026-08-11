@@ -53,13 +53,8 @@ $ErrorActionPreference = 'Stop'
 
 # $PSScriptRoot is <repo>\eval\handoff
 $repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-if (-not $Destination) {
-    # TEMP, not the repo's parent. A sibling directory satisfies "outside the
-    # repo" while 'ls ..' still prints msp-tools-mcp next to it; TEMP's parent
-    # listing is unrelated noise.
-    $tempRoot = if ($env:TEMP) { $env:TEMP } else { [System.IO.Path]::GetTempPath() }
-    $Destination = Join-Path $tempRoot '_codex-corpus-handoff'
-}
+# The default destination is computed AFTER the brief is chosen, because it is
+# per-round. See the block below the selection.
 
 # Briefs are kept per round in briefs\roundN.md rather than overwriting one
 # AGENTS.md, so that what each corpus author was told stays readable next to the
@@ -99,6 +94,25 @@ if (-not $Round) {
         throw "No brief for round ${Round}. Have: $have"
     }
     $brief = $byNumber[$Round]
+}
+
+# One directory per round, not one shared '_codex-corpus-handoff'.
+#
+# TEMP rather than the repo's parent: a sibling satisfies "outside the repo"
+# while 'ls ..' still prints msp-tools-mcp next to it, and TEMP's parent listing
+# is unrelated noise.
+#
+# Per-round, because a single reused path caused two separate problems. The
+# author's app keeps the directory open, so the next round's -Force cannot clear
+# it while that app is running. Worse, the PREVIOUS round's project still points
+# at that path - so after a -Force it silently points at the new brief, and
+# resuming that old conversation hands the author the new instructions on disk
+# plus the old round's cases in context. That nearly happened between rounds 6
+# and 7. A fresh directory per round makes a stale project point at a stale
+# directory, which is harmless and obvious.
+if (-not $Destination) {
+    $tempRoot = if ($env:TEMP) { $env:TEMP } else { [System.IO.Path]::GetTempPath() }
+    $Destination = Join-Path $tempRoot "_codex-corpus-round$Round"
 }
 
 $kb = Join-Path $repo 'kb\KB-006-security-incident-response.md'
