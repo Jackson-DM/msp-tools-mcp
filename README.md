@@ -6,13 +6,22 @@ An MCP server exposing the Summit Managed IT support toolset — `search_tickets
 `get_ticket`, `search_kb`, `draft_response`, `update_ticket` — with a security
 guardrail enforced in the tool layer rather than in a prompt.
 
-Works standalone in Claude Desktop for conversational MSP triage, and as the
-tool layer for [`msp-triage-agent`](../msp-triage-agent).
+Works standalone in Claude Desktop for conversational MSP triage. It is designed
+to be the tool layer for [`msp-triage-agent`](../msp-triage-agent) as well —
+same tools, same guardrail, called by an agent instead of a person — but **that
+integration is not built.** The standalone path is the one that works today.
 
-> Status: server, tools, two-stage guardrail, and test suite working end to end,
-> measured on an independently authored held-out corpus (see
-> [round four](#round-four-a-corpus-its-author-could-not-see-the-answers-to)).
-> CI, demo video, and the `msp-triage-agent` integration pending.
+> Status: server, tools, two-stage guardrail and suite working end to end;
+> 149 tests, CI green. Measured across eight rounds of held-out corpora written
+> by an author who could not see what they measure.
+>
+> One finding is open and documented rather than fixed: the stage-2 classifier
+> does not apply KB-006's verified-payment exception as a conjunction. Two prompt
+> rewrites failed to move it and a code fix measured worse and was reverted. A
+> sealed holdout and a fixed comparison rule are in place for the next attempt —
+> see [`eval/README.md`](eval/README.md).
+>
+> Not built: the `msp-triage-agent` integration, and a demo video.
 
 ---
 
@@ -539,9 +548,19 @@ A guardrail keyed to it would evaporate the moment a live Freshdesk adapter was
 swapped in, which is exactly what the data-source adapter pattern exists to
 prevent.
 
-**The guardrail has no model in the loop.** It is deterministic regex over
-ticket text. A guardrail that called a model to decide would inherit the
-negotiability it exists to remove.
+**The unnegotiable half of the guardrail has no model in the loop.** Stage 1 is
+deterministic regex over ticket text, it runs first, and its verdict is final. A
+layer whose refusals could be argued with would inherit the negotiability the
+whole design exists to remove.
+
+Stage 2 *is* a model, and the ordering is what keeps that safe: it is consulted
+only when stage 1 finds nothing, and it can add a refusal but never remove one.
+This paragraph said "the guardrail has no model in the loop" for two rounds
+after stage 2 shipped — written when it was true, left standing when it wasn't.
+The round-6 review found it, along with the same claim in `draft_response`'s
+tool description, which is the worse of the two: a README is read by people who
+can notice it is out of date, and that string is read at runtime by a model with
+no other source of truth.
 
 **Drafts are grounded, and the grounding is returned.** `draft_response` performs
 its own retrieval and returns the excerpts alongside the draft. The calling model
@@ -780,8 +799,13 @@ forgotten.
   precision half was written to seams suggested in the commissioning brief;
   recall was not. Two of those 40 cases are now spent, so a rerun measures 38.
 - KB-006's verified-payment exception is a carve-out in a safety policy, added in
-  response to one case and not yet tested against anyone trying to abuse it.
-  `round5-payment-probe` is commissioned for exactly that and is not yet back.
+  response to a single case. It has now been probed three times. The anti-abuse
+  clause held — asserted verification, request-supplied callbacks and urgency
+  overrides were all caught — but the classifier does not apply the exception as
+  a conjunction, and that is the one finding still open. Two prompt rewrites did
+  not move it; a code fix measured worse and was reverted.
+- The `msp-triage-agent` integration does not exist. The tools and the guardrail
+  are built to be called by an agent, and nothing has been.
 - Pinned to `mcp` v1 while v2 is stable and released. See SDK version above.
 - `search_kb`'s `topic_hint` cannot restrict results to a topic. It folds its
   words into the query, so it promotes matches rather than filtering them. It

@@ -161,7 +161,15 @@ DIRECTED = frozenset({
 # been applied. `--unseal` is the wall. It cannot stop a determined person —
 # nothing here can — but it makes opening a holdout a deliberate act that leaves
 # a record, instead of a side effect of being thorough.
-SEALED: dict[str, str] = {}
+SEALED: dict[str, str] = {
+    "round8-payment": (
+        "round 7 holdout; opens once, after a candidate fix is committed "
+        "and its diff is final"
+    ),
+    "round8-codex": (
+        "round 7 control; opens with the holdout, never during development"
+    ),
+}
 
 
 def score(results: list[tuple[bool, bool]]) -> dict[str, float | int]:

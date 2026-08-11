@@ -273,6 +273,26 @@ had to record that it could only measure generalisation within a slot alpha had
 already seen. An independently written holdout does not carry that limitation.
 The accident cost a corpus and bought a better test.
 
+**A second flaw, found the next day and left standing.** Every brief in this
+directory ends by asking the author to report which condition each case turns
+on — "that mapping is how the file gets read, and you are the only one who knows
+it." That is right for a development corpus and wrong for a holdout: the report
+goes to the person developing the fix, so a sealed corpus arrives with part of
+itself already disclosed. Round 8's mapping for all sixteen holdout cases landed
+in a chat transcript before the file was ever copied into the repo.
+
+Judged not to burn the file, and the reasoning is recorded here so it can be
+argued with later. What leaked is structural — which of KB-006's conditions each
+case sits on — and it is close to a restatement of the distribution the brief
+itself specified. There is no ticket text, and tuning requires text; labels are
+not secret in the first place, since corpora ship labelled. Note who benefits
+from that reading. It was accepted by the commissioner rather than by the person
+who proposed it, which is the only reason it is not simply the convenient answer.
+
+**The fix, for the next holdout commission:** a sealed corpus's author report
+belongs in the sealed directory alongside the corpus, not in the conversation.
+The brief should say so, and no brief currently does.
+
 **And the seal now lives in the harness.** `SEALED` in
 `scripts/eval_classifier.py` refuses to run a listed corpus without
 `--unseal "reason"`, checks before the file is loaded so a refusal reveals
