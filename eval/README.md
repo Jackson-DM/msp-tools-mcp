@@ -57,7 +57,7 @@ the detector.**
 
 ```powershell
 .\eval\handoff\make-handoff.ps1        # builds TEMP\_codex-corpus-round<N>
-cd $env:TEMP\_codex-corpus-round8      # the script prints the exact path
+cd $env:TEMP\_codex-corpus-round<N>    # <N> is the round; the script prints it
 codex                                   # reads AGENTS.md; give it nothing else
 ```
 
@@ -97,7 +97,7 @@ expected.
 Then:
 
 ```powershell
-Copy-Item $env:TEMP\_codex-corpus-round8\output\*.json .\eval\corpora\
+Copy-Item $env:TEMP\_codex-corpus-round<N>\output\*.json .\eval\corpora\
 uv run python scripts/eval_classifier.py --list
 uv run python scripts/eval_classifier.py <corpus-id> --dry-run
 ```
