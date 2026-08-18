@@ -407,7 +407,10 @@ worry. The probe's numbers are never quoted as recall. See
 [`eval/README.md`](eval/README.md).
 
 **Stage 1 caught nothing in either file.** On the undirected corpus that is 0 of
-5, and with round 4's twenty, **3 of 25** independently authored incidents.
+5, and with round 4's twenty, **3 of 25** independently authored incidents as of
+round 5. (Round 7's undirected file later added 2 of 5, taking the current
+figure to 5 of 30 — see the limitations section. The round-5 number stands as
+what was true when it was taken.)
 
 The probe's eight are reported separately and are not in that denominator. This
 used to read "3 of 33", pooling them in, and round 6's review was right to call
@@ -513,11 +516,12 @@ suite would have surfaced it.
 
 ### What this does and does not establish
 
-Stage 2 does the work. Stage 1 catches 3 of 25 incidents on undirected, unfamiliar
+Stage 2 does the work. Stage 1 catches 5 of 30 incidents on undirected, unfamiliar
 language and is not a meaningful detector on its own — it is a floor whose value
-is that it cannot be argued with, not that it sees much. On the two directed
-payment probes it caught none of sixteen, which is a fact about that seam rather
-than an estimate of anything, and is not pooled into the figure above.
+is that it cannot be argued with, not that it sees much. On the four directed
+payment probes it has caught none of twenty-three live incidents, which is a fact
+about that seam rather than an estimate of anything, and is not pooled into the
+figure above.
 
 That distinction is the point of the project rather than a disclaimer on it:
 **this removes the negotiability of the rule, not the difficulty of
@@ -803,10 +807,18 @@ forgotten.
   support elicitation. It proves a preview was issued and that the commit matches
   it, and it says which of the two you got.
 - The indicator scan is deterministic regex with known gaps in both directions.
-  Across two undirected held-out corpora it catches 3 of 25 incidents, including
-  only 3 of the 10 that KB-006 names explicitly, and 0 of 16 on the two directed
-  payment probes. It is a floor, and a low one — its value is that it cannot be
-  argued with, not its coverage.
+  Across three undirected held-out corpora it catches **5 of 30** incidents, and
+  **0 of 23** live incidents on the four directed payment probes. It is a floor,
+  and a low one — its value is that it cannot be argued with, not its coverage.
+
+  This figure read `3 of 25` for a week after it stopped being true.
+  `round7-codex` arrived, stage 1 caught 2 of its 5 — the most it has managed on
+  any undirected corpus — and nobody folded it in. Note the direction: the stale
+  number was *more* self-critical than the truth. A repo that has spent eight
+  rounds refusing flattering numbers can still be wrong in the humble direction,
+  and that is no better. Derived by walking every corpus against current code
+  rather than by adding to the old total; `eval/README.md` records which
+  corpora qualify and why.
 - Both directions have live defects, found by independent review and logged in
   `eval/README.md`: routine tickets are refused where an ordinary coordinator
   (`and`, `then`, a bare `;`) sits between a verb and its object, and where a
@@ -841,7 +853,7 @@ forgotten.
   security tickets are all legible — ransomware, credentials on a fake page, an
   attachment followed by a degrading machine — and announce themselves to a weak
   model under a hostile prompt. Hard cases exist; this repo measures its own
-  scan at 3 of 25 on independently authored incidents. None of that difficulty
+  scan at 5 of 30 on independently authored incidents. None of that difficulty
   is in that suite.
 
   So what the wall buys remains undemonstrated rather than disproven: a

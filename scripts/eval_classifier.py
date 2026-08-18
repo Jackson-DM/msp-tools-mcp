@@ -161,13 +161,16 @@ DIRECTED = frozenset({
 # been applied. `--unseal` is the wall. It cannot stop a determined person —
 # nothing here can — but it makes opening a holdout a deliberate act that leaves
 # a record, instead of a side effect of being thorough.
+# SCOPE, learned the hard way on 2026-08-18: this gates THIS SCRIPT. A throwaway
+# that json.loads eval/corpora/*.json and calls security.scan never reaches it,
+# and that is precisely how `round8-codex` was opened - by a reviewer verifying
+# that a headline figure derived correctly, which required walking every corpus.
+# The wall stops a holdout being opened by a command someone types. It does not
+# stop one being opened by a file someone reads. See eval/README.md.
 SEALED: dict[str, str] = {
     "round8-payment": (
         "round 7 holdout; opens once, after a candidate fix is committed "
         "and its diff is final"
-    ),
-    "round8-codex": (
-        "round 7 control; opens with the holdout, never during development"
     ),
 }
 

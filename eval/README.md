@@ -214,7 +214,10 @@ for deciding it, and it holds today and will not hold once round 7 returns:
 Note what this does *not* do. Round 6 had no such predeclaration, so its spend
 stays set-wide, `round6-codex`'s five positives stay out, and the undirected
 floor stays **3 of 25** rather than the 4 of 30 that a retroactive carve-out
-would have released. The rule was chosen while the number it refuses was the one
+would have released. (Both figures are as of when this rule was written. Round
+7's undirected corpus has since taken the floor to 5 of 30 by ordinary means —
+a new corpus measured and counted — which is not the same as releasing
+round 6's spent cases, and the rule above still refuses that.) The rule was chosen while the number it refuses was the one
 in view. That is the only circumstance under which choosing it means anything.
 
 ### The seal broke the same day it was written
@@ -292,6 +295,40 @@ who proposed it, which is the only reason it is not simply the convenient answer
 **The fix, for the next holdout commission:** a sealed corpus's author report
 belongs in the sealed directory alongside the corpus, not in the conversation.
 The brief should say so, and no brief currently does.
+
+### The seal broke a second time, the same way, past the guard
+
+2026-08-18. `round8-codex` — round 8's control — was read at stage 1 while a
+reviewer was verifying that the undirected floor derived correctly. The
+verification was right to happen and found a fabricated number; the sealed file
+got walked along with every other corpus on the way.
+
+**The guard did not fire because the guard is in the harness and this was not a
+harness run.** `SEALED` gates `scripts/eval_classifier.py`. A throwaway script
+that calls `json.load` on `eval/corpora/*.json` and runs `security.scan` never
+touches it. That is the honest scope of the wall: it stops a holdout being
+opened by a command someone types, not by a file someone reads — and reading
+every corpus is what "derive it rather than remember it" instructs.
+
+Same disposition as round 7, and for the same reason. The spend-scope rule says
+a per-layer carve-out claimed after the results are in is never valid, and round
+7 did not rescue its control by arguing the reading was stage-1 only. So:
+
+| File | Was | Is now |
+|---|---|---|
+| `round8-payment` | sealed holdout | **untouched, still sealed.** No read, no scan |
+| `round8-codex` | sealed control | **retired.** Its stage-1 reading stands as a baseline; it cannot grade round 8's candidate |
+
+Note the direction, because it cuts against the person recording it: excluding
+`round8-codex` leaves the floor at 5 of 30, or 17%. Including it would be 5 of
+35, or 14%. The exclusion is correct while the file is sealed, and it is also
+the flattering way round — which is exactly the shape of thing this directory
+exists to notice about itself.
+
+What this does not justify is a bigger wall. Encrypting the corpora or moving
+them out of the tree would defeat a reader who is not the threat; the realistic
+failure both times was a careful person being thorough, and the fix for that is
+that the second occurrence is written down here rather than discovered later.
 
 **And the seal now lives in the harness.** `SEALED` in
 `scripts/eval_classifier.py` refuses to run a listed corpus without
@@ -411,7 +448,8 @@ under a `recall` heading *is* a performance estimate however it is captioned.
 Counts read as what they are: eight tickets, and what happened to each.
 
 **Stage 1 caught nothing in either file.** 0 of 5 on the undirected corpus, which
-with round 4's twenty is **3 of 25** on independently authored, undirected cases.
+with round 4's twenty is **3 of 25** on independently authored, undirected cases
+as of round 5. The current figure is 5 of 30 — see the note below.
 The probe's eight positives are reported below and are deliberately not in that
 denominator — see the correction that follows.
 
@@ -437,6 +475,30 @@ Nor does the direction of the bias rescue it. Payment tickets are the seam stage
 erring toward self-criticism, which is the easiest kind to leave unexamined in a
 document whose whole argument is about refusing flattering ones. The rule is
 about what the sample can estimate.
+
+> **This figure has since moved, and the way it moved is the point.** As of
+> round 7 the undirected floor is **5 of 30**: `round7-codex` contributed 2 of
+> 5, the most stage 1 has caught on any undirected corpus. It read `3 of 25`
+> for a week after that stopped being true, because a new corpus was measured
+> and nobody added it to the running total.
+>
+> Note the direction. The stale number was *more* self-critical than the truth —
+> 12% where the real figure is 17%. This directory exists because flattering
+> numbers get believed, and it turns out the same inattention produces
+> unflattering ones. Neither is honest; both are just unmaintained.
+>
+> The fix is to stop maintaining a total. The current figure is derived by
+> walking every corpus against current code and summing the live undirected
+> positives — never by adding a round to a remembered number. Round 5's figure
+> below stands as what was true when it was taken.
+>
+> **And the first draft of this correction contained a fabricated number.**
+> Alongside the derived `5 of 30` it asserted "0 of 31 live incidents on the
+> four directed payment probes". The probes hold 23 live incidents. 31 is
+> 23 plus the 8 in `round8-payment`, the sealed holdout — an arithmetic nobody
+> performed, in a paragraph about deriving rather than remembering. It was
+> caught by a reviewer doing exactly what the paragraph said to do. Stale is
+> neglect; invented is worse, and the two arrived in the same diff.
 
 The split figures are 3 of 25 undirected and 0 of 16 across both probes, and the
 conclusion is identical either way. Nothing was being propped up. That is the
