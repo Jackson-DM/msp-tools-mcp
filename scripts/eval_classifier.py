@@ -85,7 +85,7 @@ def load_corpus(path: Path) -> dict:
         if key not in prov:
             raise CorpusError(
                 f"{path.name}: provenance is missing '{key}'. A corpus without a "
-                "provenance trail cannot support a held-out claim — that is the "
+                "provenance trail cannot support a held-out claim - that is the "
                 "only thing that makes its score worth quoting."
             )
 
@@ -113,7 +113,7 @@ def load_corpus(path: Path) -> dict:
                 f"{where} ({c['id']}): filed_category is 'security'. Stage 1's "
                 "label check refuses that before reading a word of the body, so "
                 "the case would measure nothing. File it as a plausible wrong "
-                "label instead — that is the realistic failure mode."
+                "label instead - that is the realistic failure mode."
             )
         if c["case_type"] == "injection" and not c["expect_refuse"]:
             raise CorpusError(
@@ -204,6 +204,21 @@ RETIRED: dict[str, str] = {
     ),
 }
 
+# `--list` checks SEALED before RETIRED, so a corpus in both would show as
+# sealed and its retirement note would be invisible. That is the safe direction
+# for the RUN path - refusing beats warning - and the wrong one for the LISTING,
+# which is the artifact this discipline now leans on. Nothing is in both today
+# and the states are conceptually exclusive: a sealed corpus has not been read,
+# a retired one has. If they ever overlap, something has happened that nobody
+# designed, and it should stop the run rather than quietly pick a winner.
+_both = sorted(set(SEALED) & set(RETIRED))
+if _both:
+    raise SystemExit(
+        f"corpus in both SEALED and RETIRED: {', '.join(_both)}.\n"
+        "  These states are exclusive - sealed means unread, retired means read\n"
+        "  at a disqualifying moment. Decide which it is before running anything."
+    )
+
 
 def score(results: list[tuple[bool, bool]]) -> dict[str, float | int]:
     """results: list of (expected_refuse, actual_refuse)."""
@@ -260,13 +275,13 @@ def print_provenance(data: dict) -> None:
     print(f"corpus:   {data['corpus_id']}  ({len(data['cases'])} cases)")
     print(f"author:   {prov['author']}")
     print(f"given:    {', '.join(prov['materials_provided']) or 'nothing recorded'}")
-    print(f"withheld: {', '.join(prov['materials_withheld']) or 'NOTHING — not a held-out corpus'}")
+    print(f"withheld: {', '.join(prov['materials_withheld']) or 'NOTHING - not a held-out corpus'}")
     if prov.get("isolation"):
         print(f"isolation: {prov['isolation']}")
     leak = prov.get("known_leakage")
     if leak:
         print()
-        print("KNOWN LEAKAGE — do not quote the headline number without this:")
+        print("KNOWN LEAKAGE - do not quote the headline number without this:")
         for line in _wrap(leak, 92):
             print(f"  {line}")
     print()
@@ -414,7 +429,7 @@ def main() -> None:
         # system, they just cannot judge a candidate. Blocking the run would
         # hide a baseline that is still true.
         print("=" * 78)
-        print(f"RETIRED CORPUS — {path.stem}")
+        print(f"RETIRED CORPUS - {path.stem}")
         for line in _wrap(RETIRED[path.stem], 74):
             print(f"  {line}")
         print()
@@ -426,7 +441,7 @@ def main() -> None:
 
     if args.unseal:
         print("=" * 78)
-        print(f"UNSEALING {path.stem} — this is a one-time reading.")
+        print(f"UNSEALING {path.stem} - this is a one-time reading.")
         print(f"  reason given: {args.unseal}")
         if path.stem not in SEALED:
             print("  NOTE: this corpus was not sealed. --unseal did nothing.")
