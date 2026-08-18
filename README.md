@@ -31,7 +31,7 @@ run. What it shows is a deterministic layer holding steady on a run where the
 model's own judgment did not. What it does not show is harm prevented.
 
 > Status: server, tools, two-stage guardrail and suite working end to end;
-> 149 tests, CI green. Measured across eight evaluation rounds, with isolated,
+> 153 tests, CI green. Measured across eight evaluation rounds, with isolated,
 > independently authored corpora from round four onward.
 >
 > One finding is open and documented rather than fixed: the stage-2 classifier
