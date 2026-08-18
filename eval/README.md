@@ -327,8 +327,26 @@ exists to notice about itself.
 
 What this does not justify is a bigger wall. Encrypting the corpora or moving
 them out of the tree would defeat a reader who is not the threat; the realistic
-failure both times was a careful person being thorough, and the fix for that is
-that the second occurrence is written down here rather than discovered later.
+failure both times was a careful person being thorough.
+
+**What it did justify is putting the retirement where people look.** Three
+corpora are now retired — `round7-codex`, `round7-payment-beta` and
+`round8-codex` — and until this was written they appeared in `--list` as
+ordinary files with a healthy qualifying count, with the reason living only in
+this document. That is the arrangement that let the seal break twice. `RETIRED`
+in `scripts/eval_classifier.py` now carries it:
+
+```
+round7-codex   10 cases   RETIRED   <-- round 7 control, read at stage 1 ...
+round8-payment 16 cases    SEALED   <-- HOLDOUT: opens once, after ...
+```
+
+The two states are deliberately different. **Sealed refuses to run. Retired runs
+and warns.** A retired corpus's numbers still describe the system honestly — the
+system is what it is — so blocking the run would hide a baseline that remains
+true. What it cannot do is show that a change helped, and the banner says so
+every time rather than trusting the reader to remember which of eleven files
+this is.
 
 **And the seal now lives in the harness.** `SEALED` in
 `scripts/eval_classifier.py` refuses to run a listed corpus without

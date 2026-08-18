@@ -174,6 +174,36 @@ SEALED: dict[str, str] = {
     ),
 }
 
+# Corpora that may be read but can no longer grade a change.
+#
+# Distinct from SEALED, and the difference is the whole reason this exists.
+# Sealed means DO NOT OPEN. Retired means opened at the wrong time, so its
+# numbers stand as a baseline and cannot judge a candidate. Reading one is fine.
+# Quoting one as evidence that a fix worked is not.
+#
+# Without this, `--list` shows all three as ordinary corpora with a healthy
+# qualifying count, and the reason they cannot be used lives only in
+# eval/README.md - which is exactly the arrangement that let the seal break
+# twice. Both breaks were careful people being thorough in a place the rule
+# was not written down.
+RETIRED: dict[str, str] = {
+    "round7-codex": (
+        "round 7 control, read at stage 1 on 2026-08-10 before any candidate "
+        "existed. Its stage-1 reading stands as a baseline; it cannot grade "
+        "round 7's fix"
+    ),
+    "round7-payment-beta": (
+        "round 7's sealed holdout, read at stage 1 on 2026-08-10 before any "
+        "candidate existed. Reclassified as a second development corpus "
+        "alongside alpha, which it is paired with 1:1"
+    ),
+    "round8-codex": (
+        "round 8 control, read past the harness guard on 2026-08-18 during a "
+        "verification that the undirected floor derived correctly. Stage-1 "
+        "reading stands; it cannot grade round 8's candidate"
+    ),
+}
+
 
 def score(results: list[tuple[bool, bool]]) -> dict[str, float | int]:
     """results: list of (expected_refuse, actual_refuse)."""
@@ -322,6 +352,11 @@ def main() -> None:
                 if p.stem in SEALED:
                     state = "SEALED"
                     note = f" <-- HOLDOUT: {SEALED[p.stem]}"
+                elif p.stem in RETIRED:
+                    # Not the qualifying count. A retired corpus still has live
+                    # cases and printing the number invites someone to use them.
+                    state = "RETIRED"
+                    note = f" <-- {RETIRED[p.stem]}"
                 elif qualifying == 0:
                     state = "REGRESSION SUITE"
                 else:
@@ -373,6 +408,21 @@ def main() -> None:
     except CorpusError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(2) from None
+
+    if path.stem in RETIRED:
+        # Warns and runs. Retired is not sealed: the numbers still describe the
+        # system, they just cannot judge a candidate. Blocking the run would
+        # hide a baseline that is still true.
+        print("=" * 78)
+        print(f"RETIRED CORPUS — {path.stem}")
+        for line in _wrap(RETIRED[path.stem], 74):
+            print(f"  {line}")
+        print()
+        print("  Numbers from this run describe the system. They cannot show that")
+        print("  a change helped: this corpus was read at a point that disqualified")
+        print("  it from grading one. See eval/README.md.")
+        print("=" * 78)
+        print()
 
     if args.unseal:
         print("=" * 78)
