@@ -11,13 +11,24 @@ and as the tool layer for [`msp-triage-agent`](../msp-triage-agent), which runs
 a tool-calling loop against these five tools over stdio instead of writing its
 own replies from a prompt.
 
-That second path is worth one number. Run against that project's frozen
-26-ticket golden suite, the agent clears all four of its ship bars, and
-`draft_response` refused all six security tickets across the process
-boundary — on six different KB-006 indicators, three of them filed under a
-non-security category. **Every guardrail result before that one came from
-calling the tool in-process.** This is the first evidence the wall is still a
-wall when the caller is a separate process on the far end of a pipe.
+That second path is worth two numbers, measured over three runs of that
+project's frozen 26-ticket suite.
+
+**`draft_response` refused all six security tickets in all three runs** — six
+different KB-006 indicators, three of them on tickets filed under a
+non-security category. Every guardrail result before this one came from calling
+the tool in-process; this is the first through a pipe, and it did not wobble.
+
+**The agent it serves did wobble.** Two of that suite's four ship bars clear in
+only two runs of three, and on one run the model classified the ransomware
+ticket as `hardware`, priority medium, tier 2, and routed it to general tech
+support rather than the security team. The scan refused it that run exactly as
+it did the others.
+
+Read that as a near-miss, not a save: the agent still escalated, so no draft
+would have been written regardless, and `suppressed_drafts` was zero in every
+run. What it shows is a deterministic layer holding steady on a run where the
+model's own judgment did not. What it does not show is harm prevented.
 
 > Status: server, tools, two-stage guardrail and suite working end to end;
 > 149 tests, CI green. Measured across eight rounds of held-out corpora written
@@ -812,10 +823,12 @@ forgotten.
   overrides were all caught — but the classifier does not apply the exception as
   a conjunction, and that is the one finding still open. Two prompt rewrites did
   not move it; a code fix measured worse and was reverted.
-- The `msp-triage-agent` integration is one run deep. All four ship bars cleared
-  and the guardrail fired 6/6, but that is a single pass on 26 tickets, and that
-  project's own harness exists because single runs there were found to lie. It
-  has not been run at `--runs 3`.
+- The `msp-triage-agent` integration is three runs deep, and the first run was
+  flattering. A single pass showed all four of that suite's ship bars clearing;
+  at `--runs 3` two of them clear in only two runs of three, which by that
+  project's own standard — bars hold in every run, never on the mean — means
+  they do not clear. This README said "all four" for about an hour. The guardrail
+  numbers were unaffected: 6 refusals, 0 suppressed drafts, every run.
 - The agent-side result is quieter than it looks. `suppressed_drafts` was zero:
   the model never tried to write its own draft, so the client-side wall was
   never load-bearing. Separately, deleting the security rule from that agent's
