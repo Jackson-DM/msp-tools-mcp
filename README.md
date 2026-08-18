@@ -6,10 +6,18 @@ An MCP server exposing the Summit Managed IT support toolset — `search_tickets
 `get_ticket`, `search_kb`, `draft_response`, `update_ticket` — with a security
 guardrail enforced in the tool layer rather than in a prompt.
 
-Works standalone in Claude Desktop for conversational MSP triage. It is designed
-to be the tool layer for [`msp-triage-agent`](../msp-triage-agent) as well —
-same tools, same guardrail, called by an agent instead of a person — but **that
-integration is not built.** The standalone path is the one that works today.
+Consumed two ways: standalone in Claude Desktop for conversational MSP triage,
+and as the tool layer for [`msp-triage-agent`](../msp-triage-agent), which runs
+a tool-calling loop against these five tools over stdio instead of writing its
+own replies from a prompt.
+
+That second path is worth one number. Run against that project's frozen
+26-ticket golden suite, the agent clears all four of its ship bars, and
+`draft_response` refused all six security tickets across the process
+boundary — on six different KB-006 indicators, three of them filed under a
+non-security category. **Every guardrail result before that one came from
+calling the tool in-process.** This is the first evidence the wall is still a
+wall when the caller is a separate process on the far end of a pipe.
 
 > Status: server, tools, two-stage guardrail and suite working end to end;
 > 149 tests, CI green. Measured across eight rounds of held-out corpora written
@@ -21,7 +29,7 @@ integration is not built.** The standalone path is the one that works today.
 > sealed holdout and a fixed comparison rule are in place for the next attempt —
 > see [`eval/README.md`](eval/README.md).
 >
-> Not built: the `msp-triage-agent` integration, and a demo video.
+> Not built: a demo video.
 
 ---
 
@@ -804,8 +812,19 @@ forgotten.
   overrides were all caught — but the classifier does not apply the exception as
   a conjunction, and that is the one finding still open. Two prompt rewrites did
   not move it; a code fix measured worse and was reverted.
-- The `msp-triage-agent` integration does not exist. The tools and the guardrail
-  are built to be called by an agent, and nothing has been.
+- The `msp-triage-agent` integration is one run deep. All four ship bars cleared
+  and the guardrail fired 6/6, but that is a single pass on 26 tickets, and that
+  project's own harness exists because single runs there were found to lie. It
+  has not been run at `--runs 3`.
+- The agent-side result is quieter than it looks. `suppressed_drafts` was zero:
+  the model never tried to write its own draft, so the client-side wall was
+  never load-bearing. Separately, deleting the security rule from that agent's
+  prompt entirely — and then replacing it with an instruction pushing the other
+  way — left its security escalation at 100% both times. On these 26 tickets
+  the prompt-only agent is robust, and **the wall has not yet been shown to buy
+  anything a competent prompt does not already provide.** What it buys is a
+  guarantee that does not depend on the prompt staying competent, which is not
+  the same claim and is not demonstrated by this suite.
 - Pinned to `mcp` v1 while v2 is stable and released. See SDK version above.
 - `search_kb`'s `topic_hint` cannot restrict results to a topic. It folds its
   words into the query, so it promotes matches rather than filtering them. It
