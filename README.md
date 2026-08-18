@@ -31,14 +31,17 @@ run. What it shows is a deterministic layer holding steady on a run where the
 model's own judgment did not. What it does not show is harm prevented.
 
 > Status: server, tools, two-stage guardrail and suite working end to end;
-> 149 tests, CI green. Measured across eight rounds of held-out corpora written
-> by an author who could not see what they measure.
+> 149 tests, CI green. Measured across eight evaluation rounds, with isolated,
+> independently authored corpora from round four onward.
 >
 > One finding is open and documented rather than fixed: the stage-2 classifier
 > does not apply KB-006's verified-payment exception as a conjunction. Two prompt
-> rewrites failed to move it and a code fix measured worse and was reverted. A
-> sealed holdout and a fixed comparison rule are in place for the next attempt —
-> see [`eval/README.md`](eval/README.md).
+> rewrites failed to move it. The authoritative code variant was rejected on
+> structure: a component reading attacker-controlled text may add refusals and
+> never remove them. The additive variants remain unresolved because the
+> single-sample round-six session could not distinguish improvement from noise.
+> A sealed holdout and a fixed comparison rule are in place for the next attempt
+> — see [`eval/README.md`](eval/README.md).
 >
 > Not built: a demo video.
 
@@ -834,7 +837,10 @@ forgotten.
   clause held — asserted verification, request-supplied callbacks and urgency
   overrides were all caught — but the classifier does not apply the exception as
   a conjunction, and that is the one finding still open. Two prompt rewrites did
-  not move it; a code fix measured worse and was reverted.
+  not move it. The authoritative code variant was rejected on structure: a
+  component reading attacker-controlled text may add refusals and never remove
+  them. The additive variants remain unresolved because the single-sample
+  round-six session could not distinguish improvement from noise.
 - The `msp-triage-agent` integration is three runs deep, and the first run was
   flattering. A single pass showed all four of that suite's ship bars clearing;
   at `--runs 3` two of them clear in only two runs of three, which by that
