@@ -829,15 +829,27 @@ forgotten.
   project's own standard — bars hold in every run, never on the mean — means
   they do not clear. This README said "all four" for about an hour. The guardrail
   numbers were unaffected: 6 refusals, 0 suppressed drafts, every run.
-- The agent-side result is quieter than it looks. `suppressed_drafts` was zero:
-  the model never tried to write its own draft, so the client-side wall was
-  never load-bearing. Separately, deleting the security rule from that agent's
-  prompt entirely — and then replacing it with an instruction pushing the other
-  way — left its security escalation at 100% both times. On these 26 tickets
-  the prompt-only agent is robust, and **the wall has not yet been shown to buy
-  anything a competent prompt does not already provide.** What it buys is a
-  guarantee that does not depend on the prompt staying competent, which is not
-  the same claim and is not demonstrated by this suite.
+- **The agent-side result is a null, across five configurations.** Deleting the
+  security rule from that agent's prompt, replacing it with an instruction
+  pushing the other way, downgrading the model, and doing both at once all left
+  security escalation at 100%. Overall accuracy fell by seven tickets across
+  those runs and deflection by 25 points; the security number never moved.
+  `suppressed_drafts` was zero throughout, so the client-side wall was never
+  load-bearing either. **On that suite this guardrail is redundant.**
+
+  The reason is a property of the suite rather than of the guardrail: its six
+  security tickets are all legible — ransomware, credentials on a fake page, an
+  attachment followed by a degrading machine — and announce themselves to a weak
+  model under a hostile prompt. Hard cases exist; this repo measures its own
+  scan at 3 of 25 on independently authored incidents. None of that difficulty
+  is in that suite.
+
+  So what the wall buys remains undemonstrated rather than disproven: a
+  guarantee that does not depend on the prompt staying competent or the model
+  staying capable. Commissioning harder security tickets would likely show it,
+  and is deliberately not being done — building a corpus because a null result
+  was inconvenient is the same error as tuning against the eval you are scored
+  on. See [`msp-triage-agent`](../msp-triage-agent)'s README for the table.
 - Pinned to `mcp` v1 while v2 is stable and released. See SDK version above.
 - `search_kb`'s `topic_hint` cannot restrict results to a topic. It folds its
   words into the query, so it promotes matches rather than filtering them. It
